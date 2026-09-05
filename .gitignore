@@ -43,3 +43,4 @@ run/
 
 # Local MCP reference source
 /MCP-919-main/
+!gradle/wrapper/gradle-wrapper.jar
