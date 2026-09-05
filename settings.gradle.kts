@@ -24,4 +24,4 @@ plugins {
 }
 
 
-rootProject.name = "raven-bS"
+rootProject.name = "raven-rpg"
