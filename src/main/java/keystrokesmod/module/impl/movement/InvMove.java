@@ -1,6 +1,6 @@
 package keystrokesmod.module.impl.movement;
 
-import keystrokesmod.clickgui.ClickGui;
+import keystrokesmod.ui.clickgui.ClickGui;
 import keystrokesmod.event.JumpEvent;
 import keystrokesmod.event.PreUpdateEvent;
 import keystrokesmod.event.SendPacketEvent;

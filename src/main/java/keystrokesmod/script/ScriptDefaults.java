@@ -1,9 +1,9 @@
 package keystrokesmod.script;
 
 import keystrokesmod.Raven;
-import keystrokesmod.clickgui.ClickGui;
-import keystrokesmod.clickgui.components.impl.CategoryComponent;
-import keystrokesmod.clickgui.components.impl.ModuleComponent;
+import keystrokesmod.ui.clickgui.ClickGui;
+import keystrokesmod.ui.clickgui.components.impl.CategoryComponent;
+import keystrokesmod.ui.clickgui.components.impl.ModuleComponent;
 import keystrokesmod.helper.RotationHelper;
 import keystrokesmod.mixin.impl.accessor.*;
 import keystrokesmod.module.Module;

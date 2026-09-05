@@ -1,7 +1,7 @@
 package keystrokesmod.script;
 
 import keystrokesmod.Raven;
-import keystrokesmod.clickgui.components.impl.CategoryComponent;
+import keystrokesmod.ui.clickgui.components.impl.CategoryComponent;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.TextSetting;
 import keystrokesmod.utility.NetworkUtils;

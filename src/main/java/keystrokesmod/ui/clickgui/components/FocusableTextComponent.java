@@ -1,4 +1,4 @@
-package keystrokesmod.clickgui.components;
+package keystrokesmod.ui.clickgui.components;
 
 public interface FocusableTextComponent {
     boolean isTextInputFocused();

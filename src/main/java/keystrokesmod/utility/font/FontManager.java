@@ -57,7 +57,7 @@ public final class FontManager {
         return getRenderer(family, DEFAULT_NAMETAG_FONT_SIZE);
     }
 
-    private static RavenFontRenderer getRenderer(String family, float fontSize) {
+    public static RavenFontRenderer getRenderer(String family, float fontSize) {
         float safeFontSize = Math.max(1.0f, fontSize);
         BundledFont bundledFont;
 
