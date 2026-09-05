@@ -7,11 +7,9 @@ import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.player.BedAura;
 import keystrokesmod.module.impl.render.Freelook;
 import keystrokesmod.module.impl.player.FastMine;
-import keystrokesmod.ui.mainui.MainUI;
 import org.objectweb.asm.Opcodes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraftforge.common.MinecraftForge;
@@ -108,14 +106,9 @@ public class MixinMinecraft {
         }
     }
 
-    @Inject(method = "displayGuiScreen(Lnet/minecraft/client/gui/GuiScreen;)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "displayGuiScreen(Lnet/minecraft/client/gui/GuiScreen;)V", at = @At("HEAD"))
     public void onDisplayGuiScreen(GuiScreen guiScreen, CallbackInfo ci) {
         Minecraft mc = (Minecraft) (Object) this;
-        if (guiScreen instanceof GuiMainMenu) {
-            mc.displayGuiScreen(new MainUI());
-            ci.cancel();
-            return;
-        }
         GuiScreen previousGui = mc.currentScreen;
         GuiScreen setGui = guiScreen;
         boolean opened = setGui != null;

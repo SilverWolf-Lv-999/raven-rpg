@@ -1,4 +1,4 @@
-package keystrokesmod.ui.clickgui.components.impl;
+package keystrokesmod.clickgui.components.impl;
 
 import keystrokesmod.module.setting.impl.TextSetting;
 import org.lwjgl.input.Keyboard;

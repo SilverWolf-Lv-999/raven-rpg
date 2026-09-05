@@ -7,11 +7,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import keystrokesmod.Raven;
-import keystrokesmod.ui.clickgui.ClickGui;
-import keystrokesmod.ui.clickgui.components.Component;
-import keystrokesmod.ui.clickgui.components.impl.CategoryComponent;
-import keystrokesmod.ui.clickgui.components.impl.ModuleComponent;
-import keystrokesmod.ui.clickgui.components.impl.PlayerListComponent;
+import keystrokesmod.clickgui.ClickGui;
+import keystrokesmod.clickgui.components.Component;
+import keystrokesmod.clickgui.components.impl.CategoryComponent;
+import keystrokesmod.clickgui.components.impl.ModuleComponent;
+import keystrokesmod.clickgui.components.impl.PlayerListComponent;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 

@@ -1,7 +1,7 @@
 package keystrokesmod.mixin.impl.render;
 
 import keystrokesmod.Raven;
-import keystrokesmod.ui.clickgui.animation.ScrollOffsetAnimation;
+import keystrokesmod.clickgui.animation.ScrollOffsetAnimation;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.GuiTextField;

@@ -1,6 +1,6 @@
 package keystrokesmod;
 
-import keystrokesmod.ui.clickgui.ClickGui;
+import keystrokesmod.clickgui.ClickGui;
 import keystrokesmod.command.CommandManager;
 import keystrokesmod.event.PostProfileLoadEvent;
 import keystrokesmod.event.PostSetSliderEvent;

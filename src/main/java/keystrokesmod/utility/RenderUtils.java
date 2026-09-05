@@ -1,6 +1,6 @@
 package keystrokesmod.utility;
 
-import keystrokesmod.ui.clickgui.ClickGui;
+import keystrokesmod.clickgui.ClickGui;
 import keystrokesmod.mixin.impl.accessor.IAccessorMinecraft;
 import keystrokesmod.module.impl.player.Freecam;
 
@@ -29,6 +29,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.GLU;
 
 import keystrokesmod.Raven;
+import keystrokesmod.utility.StairsUtils;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.util.ResourceLocation;
 

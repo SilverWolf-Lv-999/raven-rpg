@@ -1,8 +1,8 @@
-package keystrokesmod.ui.clickgui.components.impl;
+package keystrokesmod.clickgui.components.impl;
 
 import keystrokesmod.Raven;
-import keystrokesmod.ui.clickgui.animation.ScrollOffsetAnimation;
-import keystrokesmod.ui.clickgui.components.Component;
+import keystrokesmod.clickgui.animation.ScrollOffsetAnimation;
+import keystrokesmod.clickgui.components.Component;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.utility.RenderUtils;

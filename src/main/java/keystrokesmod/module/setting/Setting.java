@@ -2,8 +2,8 @@ package keystrokesmod.module.setting;
 
 import com.google.gson.JsonObject;
 import keystrokesmod.Raven;
-import keystrokesmod.ui.clickgui.components.impl.CategoryComponent;
-import keystrokesmod.ui.clickgui.components.impl.ModuleComponent;
+import keystrokesmod.clickgui.components.impl.CategoryComponent;
+import keystrokesmod.clickgui.components.impl.ModuleComponent;
 import keystrokesmod.module.Module;
 
 public abstract class Setting {

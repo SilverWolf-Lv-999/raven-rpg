@@ -1,7 +1,7 @@
-package keystrokesmod.ui.clickgui.components.impl;
+package keystrokesmod.clickgui.components.impl;
 
 import keystrokesmod.Raven;
-import keystrokesmod.ui.clickgui.animation.ScrollOffsetAnimation;
+import keystrokesmod.clickgui.animation.ScrollOffsetAnimation;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.utility.RenderUtils;
 import keystrokesmod.utility.Theme;
@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.opengl.GL11;
 
 import java.util.List;
 

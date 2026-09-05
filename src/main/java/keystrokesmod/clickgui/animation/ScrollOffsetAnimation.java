@@ -1,4 +1,4 @@
-package keystrokesmod.ui.clickgui.animation;
+package keystrokesmod.clickgui.animation;
 
 public class ScrollOffsetAnimation {
     private float from;
