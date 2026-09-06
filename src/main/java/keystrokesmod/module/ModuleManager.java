@@ -3,6 +3,7 @@ package keystrokesmod.module;
 import keystrokesmod.module.impl.client.ChatCommands;
 import keystrokesmod.module.impl.client.CommandLine;
 import keystrokesmod.module.impl.client.Gui;
+import keystrokesmod.module.impl.client.RPGUI;
 import keystrokesmod.module.impl.client.Relationships;
 import keystrokesmod.module.impl.client.Settings;
 import keystrokesmod.module.impl.combat.*;
@@ -89,12 +90,14 @@ public class ModuleManager {
     public static Relationships relationships;
     public static HideWindow hideWindow;
     public static Displace displace;
+    public static RPGUI rpgUi;
 
     public void register() {
         this.addModule(chatCommands = new ChatCommands());
         this.addModule(commandLine = new CommandLine());
         this.addModule(new Gui());
         this.addModule(new Settings());
+        this.addModule(rpgUi = new RPGUI());
         this.addModule(relationships = new Relationships());
         if (keystrokesmod.Raven.playerRelationsManager == null || keystrokesmod.Raven.playerRelationsManager.isActive()) {
             relationships.enable();

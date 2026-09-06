@@ -44,6 +44,7 @@ loom {
     forge {
         pack200Provider.set(dev.architectury.pack200.java.Pack200Adapter())
         mixinConfig("mixins.raven.json")
+        accessTransformer(file("src/main/resources/accesstransformer.cfg"))
     }
 
     mixin {
@@ -92,6 +93,7 @@ tasks.withType(org.gradle.jvm.tasks.Jar::class) {
     manifest.attributes.run {
         this["FMLCorePluginContainsFMLMod"] = "true"
         this["ForceLoadAsMod"] = "true"
+        this["FMLAT"] = "${modid}_at.cfg"
 
         this["TweakClass"] = "org.spongepowered.asm.launch.MixinTweaker"
         this["MixinConfigs"] = "mixins.raven.json"
