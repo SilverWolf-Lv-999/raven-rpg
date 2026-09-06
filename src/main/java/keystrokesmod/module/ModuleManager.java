@@ -83,6 +83,7 @@ public class ModuleManager {
     public static NoHurtCam noHurtCam;
     public static AutoTool autoTool;
     public static AutoSwap autoSwap;
+    public static AutoShell autoShell;
     public static Sprint sprint;
     public static Weather weather;
     public static ChatCommands chatCommands;
@@ -172,6 +173,7 @@ public class ModuleManager {
         this.addModule(antiFireball = new AntiFireball());
         this.addModule(new AutoJump());
         this.addModule(autoSwap = new AutoSwap());
+        this.addModule(autoShell = new AutoShell());
         this.addModule(new BridgeAssist());
         this.addModule(new Clutch());
         this.addModule(autoTool = new AutoTool());
