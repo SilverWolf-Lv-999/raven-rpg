@@ -37,7 +37,7 @@ public class MixinItemRenderer implements IMixinItemRenderer {
         itemToRender = originalItemToRender;
     }
 
-    @Redirect(method = "renderItemInFirstPerson", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/AbstractClientPlayer;getItemInUseCount()I"))
+    @Redirect(method = "renderItemInFirstPerson", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/AbstractClientPlayer;getItemInUseCount()I"), require = 0)
     private int getItemInUseCountForRender(AbstractClientPlayer player) {
         int actualCount = player.getItemInUseCount();
         if (actualCount > 0 || !renderItemInUse || itemToRender == null) {
