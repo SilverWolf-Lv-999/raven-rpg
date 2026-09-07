@@ -1,14 +1,14 @@
 package keystrokesmod.module.impl.player;
 
-import keystrokesmod.event.GameTickEvent;
 import keystrokesmod.mixin.impl.accessor.IAccessorPlayerControllerMP;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.SliderSetting;
+import keystrokesmod.utility.PacketUtils;
 import keystrokesmod.utility.Utils;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.play.client.C01PacketChatMessage;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 public class AutoShell extends Module {
     private ItemStack pendingStack;
@@ -32,8 +32,8 @@ public class AutoShell extends Module {
         resetState();
     }
 
-    @SubscribeEvent
-    public void onGameTick(GameTickEvent event) {
+    @Override
+    public void onUpdate() {
         if (!Utils.nullCheck()) {
             resetState();
             return;
@@ -46,12 +46,12 @@ public class AutoShell extends Module {
                     return;
                 }
 
-                if (++pendingTicks < (int) delay.getInput()) {
+                if (++pendingTicks <= (int) delay.getInput()) {
                     return;
                 }
 
                 pendingStackSize = heldStack.stackSize;
-                mc.thePlayer.sendChatMessage("/ils shell");
+                PacketUtils.sendPacketNoEvent(new C01PacketChatMessage("/ils shell"));
                 commandSent = true;
                 pendingTicks = 0;
                 return;
@@ -70,14 +70,18 @@ public class AutoShell extends Module {
                 continue;
             }
 
-            ItemStack targetStack = stack.copy();
             if (!moveToMainHand(inventoryIndex)) {
                 continue;
             }
 
-            pendingStack = targetStack;
+            ItemStack heldStack = mc.thePlayer.getHeldItem();
+            if (heldStack == null) {
+                continue;
+            }
+
+            pendingStack = heldStack.copy();
             pendingTicks = 0;
-            pendingStackSize = targetStack.stackSize;
+            pendingStackSize = heldStack.stackSize;
             commandSent = false;
             return;
         }
@@ -144,16 +148,36 @@ public class AutoShell extends Module {
             return false;
         }
 
-        mc.playerController.windowClick(mc.thePlayer.openContainer.windowId, inventorySlot.slotNumber, currentItem, 2, mc.thePlayer);
-        return true;
+        ItemStack targetStack = inventorySlot.getStack();
+        if (targetStack == null) {
+            return false;
+        }
+        targetStack = targetStack.copy();
+        mc.playerController.windowClick(mc.thePlayer.openContainer.windowId, inventorySlot.slotNumber, 0, 1, mc.thePlayer);
+
+        for (int hotbarIndex = 0; hotbarIndex < 9; hotbarIndex++) {
+            ItemStack hotbarStack = mc.thePlayer.inventory.mainInventory[hotbarIndex];
+            if (hotbarStack == null
+                    || hotbarStack.getItem() != targetStack.getItem()
+                    || hotbarStack.getMetadata() != targetStack.getMetadata()
+                    || !ItemStack.areItemStackTagsEqual(hotbarStack, targetStack)) {
+                continue;
+            }
+
+            if (hotbarIndex != currentItem) {
+                mc.thePlayer.inventory.currentItem = hotbarIndex;
+                ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
+            }
+            return true;
+        }
+        return false;
     }
 
     private boolean isSameStack(ItemStack firstStack, ItemStack secondStack) {
         return firstStack != null
                 && secondStack != null
                 && firstStack.getItem() == secondStack.getItem()
-                && firstStack.getMetadata() == secondStack.getMetadata()
-                && ItemStack.areItemStackTagsEqual(firstStack, secondStack);
+                && firstStack.getMetadata() == secondStack.getMetadata();
     }
 
     private void resetState() {
