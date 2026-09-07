@@ -9,7 +9,7 @@ import org.lwjgl.input.Keyboard;
 import java.util.Locale;
 
 public class ChatCommands extends Module {
-    public static final String DEFAULT_PREFIX = ".";
+    public static final String DEFAULT_PREFIX = ",";
 
     public final ButtonSetting lowercase;
     public final TextSetting prefix;
@@ -44,6 +44,7 @@ public class ChatCommands extends Module {
             }
         });
         this.registerSetting(lowercase = new ButtonSetting("Lowercase", false));
+        this.enable();
     }
 
     public boolean lowercase() {
