@@ -1,8 +1,9 @@
 package keystrokesmod.mixin.impl.render;
 
+import keystrokesmod.mixin.impl.accessor.IAccessorEntityPlayer;
 import keystrokesmod.mixin.interfaces.IMixinItemRenderer;
 import keystrokesmod.utility.Utils;
-import net.minecraft.client.entity.AbstractClientPlayer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.item.EnumAction;
 import net.minecraft.item.ItemStack;
@@ -10,12 +11,13 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ItemRenderer.class)
 public class MixinItemRenderer implements IMixinItemRenderer {
     private ItemStack originalItemToRender;
+    private int originalItemInUseCount;
+    private boolean changedItemInUseCount;
     @Shadow
     private ItemStack itemToRender;
     public boolean cancelUpdate = false;
@@ -30,21 +32,24 @@ public class MixinItemRenderer implements IMixinItemRenderer {
     private void modifyRenderItemPre(float p_renderItemInFirstPerson_1_, CallbackInfo info) {
         originalItemToRender = itemToRender;
         itemToRender = Utils.getSpoofedItem(originalItemToRender);
+        Minecraft mc = Minecraft.getMinecraft();
+        if (renderItemInUse && itemToRender != null && itemToRender.getItemUseAction() == EnumAction.BLOCK && mc.thePlayer != null) {
+            originalItemInUseCount = mc.thePlayer.getItemInUseCount();
+            if (originalItemInUseCount <= 0) {
+                ((IAccessorEntityPlayer) mc.thePlayer).setItemInUseCount(1);
+                changedItemInUseCount = true;
+            }
+        }
     }
 
     @Inject(method = "renderItemInFirstPerson", at = @At("RETURN"))
     private void modifyRenderItemPost(float p_renderItemInFirstPerson_1_, CallbackInfo info) {
-        itemToRender = originalItemToRender;
-    }
-
-    @Redirect(method = "renderItemInFirstPerson", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/AbstractClientPlayer;getItemInUseCount()I"), require = 0)
-    private int getItemInUseCountForRender(AbstractClientPlayer player) {
-        int actualCount = player.getItemInUseCount();
-        if (actualCount > 0 || !renderItemInUse || itemToRender == null) {
-            return actualCount;
+        Minecraft mc = Minecraft.getMinecraft();
+        if (changedItemInUseCount && mc.thePlayer != null) {
+            ((IAccessorEntityPlayer) mc.thePlayer).setItemInUseCount(originalItemInUseCount);
+            changedItemInUseCount = false;
         }
-
-        return itemToRender.getItemUseAction() == EnumAction.BLOCK ? 1 : actualCount;
+        itemToRender = originalItemToRender;
     }
 
     @Inject(method = "updateEquippedItem", at = @At("HEAD"), cancellable = true)

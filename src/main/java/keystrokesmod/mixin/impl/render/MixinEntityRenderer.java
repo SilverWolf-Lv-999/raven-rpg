@@ -28,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @SideOnly(Side.CLIENT)
-@Mixin(EntityRenderer.class)
+@Mixin(value = EntityRenderer.class, priority = 1001)
 public class MixinEntityRenderer implements ISaturationRenderer {
 
     @Shadow

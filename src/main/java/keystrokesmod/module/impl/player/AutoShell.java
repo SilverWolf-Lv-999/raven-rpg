@@ -3,6 +3,7 @@ package keystrokesmod.module.impl.player;
 import keystrokesmod.event.GameTickEvent;
 import keystrokesmod.mixin.impl.accessor.IAccessorPlayerControllerMP;
 import keystrokesmod.module.Module;
+import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.utility.Utils;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
@@ -12,14 +13,17 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public class AutoShell extends Module {
     private ItemStack pendingStack;
     private int pendingTicks;
+    public final SliderSetting delay = new SliderSetting("send cmd delay", 0.0, 0.0, 20.0, 1.0);
 
     public AutoShell() {
         super("Auto Shell", category.player);
+        this.registerSetting(delay);
     }
 
     @Override
     public void onEnable() {
         resetState();
+        this.disable();
     }
 
     @Override
