@@ -13,6 +13,8 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public class AutoShell extends Module {
     private ItemStack pendingStack;
     private int pendingTicks;
+    private int pendingStackSize;
+    private boolean commandSent;
     public final SliderSetting delay = new SliderSetting("send cmd delay", 0.0, 0.0, 20.0, 1.0);
 
     public AutoShell() {
@@ -23,7 +25,6 @@ public class AutoShell extends Module {
     @Override
     public void onEnable() {
         resetState();
-        this.disable();
     }
 
     @Override
@@ -39,13 +40,28 @@ public class AutoShell extends Module {
         }
 
         if (pendingStack != null) {
-            pendingTicks++;
             ItemStack heldStack = mc.thePlayer.getHeldItem();
-            if (!isPendingStackProcessed(heldStack) && pendingTicks < 40) {
+            if (!commandSent) {
+                if (!isSameStack(heldStack, pendingStack)) {
+                    return;
+                }
+
+                if (++pendingTicks < (int) delay.getInput()) {
+                    return;
+                }
+
+                pendingStackSize = heldStack.stackSize;
+                mc.thePlayer.sendChatMessage("/ils shell");
+                commandSent = true;
+                pendingTicks = 0;
                 return;
             }
-            pendingStack = null;
-            pendingTicks = 0;
+
+            if (heldStack != null && isSameStack(heldStack, pendingStack) && heldStack.stackSize >= pendingStackSize) {
+                return;
+            }
+
+            resetState();
         }
 
         for (int inventoryIndex = 0; inventoryIndex < mc.thePlayer.inventory.mainInventory.length; inventoryIndex++) {
@@ -54,20 +70,19 @@ public class AutoShell extends Module {
                 continue;
             }
 
+            ItemStack targetStack = stack.copy();
             if (!moveToMainHand(inventoryIndex)) {
                 continue;
             }
 
-            ItemStack heldStack = mc.thePlayer.getHeldItem();
-            if (heldStack == null) {
-                continue;
-            }
-
-            pendingStack = heldStack.copy();
+            pendingStack = targetStack;
             pendingTicks = 0;
-            mc.thePlayer.sendChatMessage("/ils shell");
+            pendingStackSize = targetStack.stackSize;
+            commandSent = false;
             return;
         }
+
+        this.disable();
     }
 
     private boolean containsSalePrice(ItemStack stack) {
@@ -133,18 +148,18 @@ public class AutoShell extends Module {
         return true;
     }
 
-    private boolean isPendingStackProcessed(ItemStack heldStack) {
-        if (heldStack == null || heldStack.getItem() != pendingStack.getItem() || heldStack.getMetadata() != pendingStack.getMetadata()) {
-            return true;
-        }
-        if (!ItemStack.areItemStackTagsEqual(heldStack, pendingStack)) {
-            return true;
-        }
-        return heldStack.stackSize < pendingStack.stackSize;
+    private boolean isSameStack(ItemStack firstStack, ItemStack secondStack) {
+        return firstStack != null
+                && secondStack != null
+                && firstStack.getItem() == secondStack.getItem()
+                && firstStack.getMetadata() == secondStack.getMetadata()
+                && ItemStack.areItemStackTagsEqual(firstStack, secondStack);
     }
 
     private void resetState() {
         pendingStack = null;
         pendingTicks = 0;
+        pendingStackSize = 0;
+        commandSent = false;
     }
 }
