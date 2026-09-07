@@ -7,11 +7,13 @@ import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.player.BedAura;
 import keystrokesmod.module.impl.render.Freelook;
 import keystrokesmod.module.impl.player.FastMine;
+import keystrokesmod.module.impl.player.NoInteractionLimit;
 import org.objectweb.asm.Opcodes;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.player.InventoryPlayer;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraftforge.common.MinecraftForge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -72,8 +74,21 @@ public class MixinMinecraft {
     @Inject(method = "runTick", at = @At("HEAD"))
     public void onRunTickStart(CallbackInfo ci) {
         MinecraftForge.EVENT_BUS.post(new GameTickEvent());
+        Minecraft minecraft = (Minecraft) (Object) this;
+        NoInteractionLimit module = ModuleManager.noInteractionLimit;
+        if (module != null && module.canInteractWhileUsing(minecraft.thePlayer) && !minecraft.gameSettings.keyBindUseItem.isKeyDown()) {
+            minecraft.playerController.onStoppedUsingItem(minecraft.thePlayer);
+        }
     }
 
+    @Redirect(
+        method = {"runTick", "sendClickBlockToController"},
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/EntityPlayerSP;isUsingItem()Z")
+    )
+    private boolean allowInteractionWhileUsing(EntityPlayerSP player) {
+        NoInteractionLimit module = ModuleManager.noInteractionLimit;
+        return player.isUsingItem() && (module == null || !module.canInteractWhileUsing(player));
+    }
     @Inject(
         method = "runTick",
         at = @At(

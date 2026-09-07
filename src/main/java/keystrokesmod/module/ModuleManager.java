@@ -92,6 +92,7 @@ public class ModuleManager {
     public static HideWindow hideWindow;
     public static Displace displace;
     public static RPGUI rpgUi;
+    public static NoInteractionLimit noInteractionLimit;
 
     public void register() {
         this.addModule(chatCommands = new ChatCommands());
@@ -188,6 +189,7 @@ public class ModuleManager {
         this.addModule(hideWindow = new HideWindow());
         this.addModule(invManager = new InvManager());
         this.addModule(noFall = new NoFall());
+        this.addModule(noInteractionLimit = new NoInteractionLimit());
         this.addModule(noRotate = new NoRotate());
         this.addModule(safeWalk = new SafeWalk());
         this.addModule(new WaterBucket());
