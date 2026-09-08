@@ -3,11 +3,9 @@ package keystrokesmod.module.impl.player;
 import keystrokesmod.mixin.impl.accessor.IAccessorPlayerControllerMP;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.SliderSetting;
-import keystrokesmod.utility.PacketUtils;
 import keystrokesmod.utility.Utils;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
-import net.minecraft.network.play.client.C01PacketChatMessage;
 import net.minecraft.util.EnumChatFormatting;
 
 public class AutoShell extends Module {
@@ -40,23 +38,30 @@ public class AutoShell extends Module {
         }
 
         if (pendingStack != null) {
-            ItemStack heldStack = mc.thePlayer.getHeldItem();
             if (!commandSent) {
-                if (!isSameStack(heldStack, pendingStack)) {
-                    return;
+                for (int hotbarIndex = 0; hotbarIndex < 9; hotbarIndex++) {
+                    ItemStack hotbarStack = mc.thePlayer.inventory.mainInventory[hotbarIndex];
+                    if (!isSameStack(hotbarStack, pendingStack)) {
+                        continue;
+                    }
+                    if (hotbarIndex != mc.thePlayer.inventory.currentItem) {
+                        mc.thePlayer.inventory.currentItem = hotbarIndex;
+                        ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
+                    }
+                    break;
                 }
 
                 if (++pendingTicks <= (int) delay.getInput()) {
                     return;
                 }
 
-                pendingStackSize = heldStack.stackSize;
-                PacketUtils.sendPacketNoEvent(new C01PacketChatMessage("/ils shell"));
+                mc.thePlayer.sendChatMessage("/ils shell");
                 commandSent = true;
                 pendingTicks = 0;
                 return;
             }
 
+            ItemStack heldStack = mc.thePlayer.getHeldItem();
             if (heldStack != null && isSameStack(heldStack, pendingStack) && heldStack.stackSize >= pendingStackSize) {
                 return;
             }
@@ -70,18 +75,14 @@ public class AutoShell extends Module {
                 continue;
             }
 
+            ItemStack targetStack = stack.copy();
             if (!moveToMainHand(inventoryIndex)) {
                 continue;
             }
 
-            ItemStack heldStack = mc.thePlayer.getHeldItem();
-            if (heldStack == null) {
-                continue;
-            }
-
-            pendingStack = heldStack.copy();
+            pendingStack = targetStack;
             pendingTicks = 0;
-            pendingStackSize = heldStack.stackSize;
+            pendingStackSize = targetStack.stackSize;
             commandSent = false;
             return;
         }
@@ -148,29 +149,11 @@ public class AutoShell extends Module {
             return false;
         }
 
-        ItemStack targetStack = inventorySlot.getStack();
-        if (targetStack == null) {
+        if (inventorySlot.getStack() == null) {
             return false;
         }
-        targetStack = targetStack.copy();
         mc.playerController.windowClick(mc.thePlayer.openContainer.windowId, inventorySlot.slotNumber, 0, 1, mc.thePlayer);
-
-        for (int hotbarIndex = 0; hotbarIndex < 9; hotbarIndex++) {
-            ItemStack hotbarStack = mc.thePlayer.inventory.mainInventory[hotbarIndex];
-            if (hotbarStack == null
-                    || hotbarStack.getItem() != targetStack.getItem()
-                    || hotbarStack.getMetadata() != targetStack.getMetadata()
-                    || !ItemStack.areItemStackTagsEqual(hotbarStack, targetStack)) {
-                continue;
-            }
-
-            if (hotbarIndex != currentItem) {
-                mc.thePlayer.inventory.currentItem = hotbarIndex;
-                ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
-            }
-            return true;
-        }
-        return false;
+        return true;
     }
 
     private boolean isSameStack(ItemStack firstStack, ItemStack secondStack) {
