@@ -5,7 +5,6 @@ import keystrokesmod.helper.RotationHelper;
 import keystrokesmod.mixin.impl.accessor.IAccessorEntityRenderer;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
-import keystrokesmod.module.impl.minigames.SkyWars;
 import keystrokesmod.module.impl.world.AntiBot;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
@@ -13,22 +12,12 @@ import keystrokesmod.utility.RotationUtils;
 import keystrokesmod.utility.Utils;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.item.EntityArmorStand;
-import net.minecraft.entity.monster.EntityGiantZombie;
-import net.minecraft.entity.monster.EntityIronGolem;
-import net.minecraft.entity.monster.EntityPigZombie;
-import net.minecraft.entity.monster.EntitySilverfish;
-import net.minecraft.entity.monster.EntityGhast;
-import net.minecraft.entity.monster.EntitySnowman;
-import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
-import net.minecraftforge.event.entity.living.LivingSetAttackTargetEvent;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.input.Mouse;
@@ -47,9 +36,6 @@ public class KillAura extends Module {
     private SliderSetting switchDelay;
     private SliderSetting targets;
     private ButtonSetting attackMobs;
-    private ButtonSetting attackAnimals;
-    private ButtonSetting attackGhasts;
-    private ButtonSetting attackSnowmen;
     private ButtonSetting targetInvis;
     private ButtonSetting disableWhileMining;
     private ButtonSetting aimThroughBlocks;
@@ -71,8 +57,6 @@ public class KillAura extends Module {
     }
 
     private HashMap<Integer, Integer> hitMap = new HashMap<>();
-    private List<Entity> hostileMobs = new ArrayList<>();
-    private Map<Integer, Boolean> golems = new HashMap<>();
 
     private long nextClickTime;
     private Random rand;
@@ -92,9 +76,6 @@ public class KillAura extends Module {
         this.registerSetting(targets = new SliderSetting("Targets", 3.0, 1.0, 10.0, 1.0));
         this.registerSetting(targetInvis = new ButtonSetting("Target invis", true));
         this.registerSetting(attackMobs = new ButtonSetting("Attack mobs", false));
-        this.registerSetting(attackAnimals = new ButtonSetting("Attack animals", false));
-        this.registerSetting(attackGhasts = new ButtonSetting("Attack ghasts", false));
-        this.registerSetting(attackSnowmen = new ButtonSetting("Attack snowmen", false));
         this.registerSetting(aimThroughBlocks = new ButtonSetting("Hit through walls", false));
         this.registerSetting(aimThroughEntities = new ButtonSetting("Hit through entities", false));
         this.registerSetting(disableWhileMining = new ButtonSetting("Disable while mining", false));
@@ -197,27 +178,9 @@ public class KillAura extends Module {
     }
 
     @SubscribeEvent
-    public void onSetAttackTarget(LivingSetAttackTargetEvent e) {
-        if (e.entity != null && !hostileMobs.contains(e.entity)) {
-            if (!(e.target instanceof EntityPlayer) || !e.target.getName().equals(mc.thePlayer.getName())) {
-                return;
-            }
-            if (Utils.getBedwarsStatus() == 2 && e.entity instanceof EntityPigZombie) {
-                return;
-            }
-            hostileMobs.add(e.entity);
-        }
-        if (e.target == null && hostileMobs.contains(e.entity)) {
-            hostileMobs.remove(e.entity);
-        }
-    }
-
-    @SubscribeEvent
     public void onWorldJoin(EntityJoinWorldEvent e) {
         if (e.entity == mc.thePlayer) {
             hitMap.clear();
-            hostileMobs.clear();
-            golems.clear();
         }
     }
 
@@ -301,30 +264,10 @@ public class KillAura extends Module {
             if (AntiBot.isBot(entity) || (ignoreTeammates.isToggled() && Utils.isTeammate(entity))) {
                 return null;
             }
-        } else if (entity instanceof EntityAnimal) {
-            if (!attackAnimals.isToggled() || ((EntityAnimal) entity).deathTime != 0) {
-                return null;
-            }
-        } else if (entity instanceof EntityGhast) {
-            if (!attackGhasts.isToggled() || ((EntityGhast) entity).deathTime != 0) {
-                return null;
-            }
-        } else if (entity instanceof EntitySnowman) {
-            if (!attackSnowmen.isToggled() || ((EntitySnowman) entity).deathTime != 0) {
-                return null;
-            }
-        } else if (entity instanceof EntityCreature && attackMobs.isToggled()) {
-            EntityCreature creature = (EntityCreature) entity;
-            if (creature.tasks == null || creature.isAIDisabled() || creature.deathTime != 0) {
-                return null;
-            }
-
-            String canonicalName = entity.getClass().getCanonicalName();
-            if (canonicalName == null || !canonicalName.startsWith("net.minecraft.entity.monster.")) {
-                return null;
-            }
         } else {
-            return null;
+            if (!attackMobs.isToggled()) {
+                return null;
+            }
         }
 
         if (entity.isInvisible() && !targetInvis.isToggled()) {
@@ -344,14 +287,6 @@ public class KillAura extends Module {
     }
 
     private KillAuraTarget buildKillAuraTarget(EntityLivingBase entity, double distanceToBoundingBox, double maxRange) {
-        if (entity instanceof EntityCreature
-                && !(entity instanceof EntityAnimal)
-                && !(entity instanceof EntitySnowman)
-                && attackMobs.isToggled()
-                && !isHostile((EntityCreature) entity)) {
-            return null;
-        }
-
         double multipointH = 100;
         double multipointV = 100;
         if (!RotationUtils.hasValidAimPoint(entity, multipointH, multipointV, maxRange, aimThroughBlocks.isToggled(), aimThroughEntities.isToggled())) {
@@ -406,53 +341,6 @@ public class KillAura extends Module {
         }
 
         return null;
-    }
-
-    private boolean isHostile(EntityCreature entityCreature) {
-        if (SkyWars.onlyAuraHostiles()) {
-            if (entityCreature instanceof EntityGiantZombie) {
-                return false;
-            }
-            return !ModuleManager.skyWars.spawnedMobs.contains(entityCreature.getEntityId());
-        } else if (entityCreature instanceof EntitySilverfish) {
-            String teamColor = Utils.getFirstColorCode(entityCreature.getCustomNameTag());
-            String teamColorSelf = Utils.getFirstColorCode(mc.thePlayer.getDisplayName().getFormattedText());
-            return teamColor.isEmpty() || (!teamColorSelf.equals(teamColor) && !Utils.isTeammate(entityCreature));
-        } else if (entityCreature instanceof EntityIronGolem) {
-            if (Utils.getBedwarsStatus() != 2) {
-                return true;
-            }
-            if (!golems.containsKey(entityCreature.getEntityId())) {
-                double nearestDistance = -1;
-                EntityArmorStand nearestArmorStand = null;
-                for (Entity entity : mc.theWorld.loadedEntityList) {
-                    if (!(entity instanceof EntityArmorStand)) {
-                        continue;
-                    }
-                    String stripped = Utils.stripString(entity.getDisplayName().getFormattedText());
-                    if (stripped.contains("[") && stripped.endsWith("]")) {
-                        double distanceSq = entity.getDistanceSq(entityCreature.posX, entityCreature.posY, entityCreature.posZ);
-                        if (distanceSq < nearestDistance || nearestDistance == -1) {
-                            nearestDistance = distanceSq;
-                            nearestArmorStand = (EntityArmorStand) entity;
-                        }
-                    }
-                }
-                if (nearestArmorStand != null) {
-                    String teamColor = Utils.getFirstColorCode(nearestArmorStand.getDisplayName().getFormattedText());
-                    String teamColorSelf = Utils.getFirstColorCode(mc.thePlayer.getDisplayName().getFormattedText());
-                    boolean isTeam = !teamColor.isEmpty() && (teamColorSelf.equals(teamColor) || Utils.isTeammate(nearestArmorStand));
-                    golems.put(entityCreature.getEntityId(), isTeam);
-                    return !isTeam;
-                }
-                return !ModuleManager.bedwars.spawnedMobs.contains(entityCreature.getEntityId());
-            } else {
-                return !golems.getOrDefault(entityCreature.getEntityId(), false);
-            }
-        } else if (entityCreature instanceof EntityPigZombie && Utils.getBedwarsStatus() != 2) {
-            return false;
-        }
-        return hostileMobs.contains(entityCreature);
     }
 
     private boolean basicCondition() {
