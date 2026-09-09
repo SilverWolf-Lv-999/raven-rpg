@@ -1,6 +1,9 @@
 package keystrokesmod.mixin.impl.render;
 
 import keystrokesmod.module.ModuleManager;
+import keystrokesmod.module.impl.client.RPGUI;
+import keystrokesmod.utility.RPGUIUtility;
+import net.minecraft.client.gui.GuiMerchant;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.inventory.Slot;
 import org.spongepowered.asm.mixin.Mixin;
@@ -11,7 +14,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GuiContainer.class)
 public class MixinGuiContainer {
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void raven$cancelManagedInventoryMouseClick(int mouseX, int mouseY, int mouseButton, CallbackInfo callbackInfo) {
+    private void raven$selectRpgTrade(int mouseX, int mouseY, int mouseButton, CallbackInfo callbackInfo) {
+        if (RPGUI.shouldStyleMerchant() && mouseButton == 0 && (Object) this instanceof GuiMerchant) {
+            GuiMerchant guiMerchant = (GuiMerchant) (Object) this;
+            int recipeIndex = RPGUIUtility.getMerchantTradeIndex(guiMerchant, mouseX, mouseY);
+            if (recipeIndex >= 0) {
+                RPGUIUtility.selectAndFillMerchantTrade(guiMerchant, recipeIndex);
+                callbackInfo.cancel();
+                return;
+            }
+        }
         if (shouldCancelManualInventoryInput()) {
             callbackInfo.cancel();
         }

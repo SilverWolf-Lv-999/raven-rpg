@@ -24,6 +24,7 @@
     "render.MixinGuiChat",
     "render.MixinGuiPlayerTabOverlay",
     "render.MixinGuiContainer",
+    "client.MixinContainerMerchant",
     "render.MixinGuiChest",
     "render.MixinGuiMerchant",
     "render.MixinGuiScreen",
