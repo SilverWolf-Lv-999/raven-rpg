@@ -95,6 +95,10 @@ public abstract class MixinEntityLivingBase extends Entity {
         return 0.42F;
     }
 
+    /**
+     * @author
+     * @reason
+     */
     @Overwrite
     protected void jump() {
         JumpEvent jumpEvent = new JumpEvent(this.getJumpUpwardsMotion(), this.rotationYaw, this.isSprinting());

@@ -1,6 +1,8 @@
 package keystrokesmod.utility;
 
 import io.netty.buffer.Unpooled;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -13,6 +15,7 @@ import net.minecraft.inventory.ContainerMerchant;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.PacketBuffer;
+import net.minecraft.network.play.client.C0EPacketClickWindow;
 import net.minecraft.network.play.client.C17PacketCustomPayload;
 import net.minecraft.util.IChatComponent;
 import net.minecraft.village.MerchantRecipe;
@@ -173,7 +176,7 @@ public final class RPGUIUtility {
         containerMerchant.setCurrentRecipeIndex(selectedMerchantRecipe);
         PacketBuffer packetBuffer = new PacketBuffer(Unpooled.buffer());
         packetBuffer.writeInt(selectedMerchantRecipe);
-        Minecraft.getMinecraft().getNetHandler().addToSendQueue(new C17PacketCustomPayload("MC|TrSel", packetBuffer));
+        PacketUtils.sendPacketNoEvent(new C17PacketCustomPayload("MC|TrSel", packetBuffer));
         MerchantRecipeList merchantRecipeList = guiMerchant.getMerchant().getRecipes(Minecraft.getMinecraft().thePlayer);
         if (merchantRecipeList != null && selectedMerchantRecipe >= 0 && selectedMerchantRecipe < merchantRecipeList.size()) {
             MerchantRecipe merchantRecipe = merchantRecipeList.get(selectedMerchantRecipe);
@@ -188,107 +191,242 @@ public final class RPGUIUtility {
     }
 
     private static void completeMerchantTrade(GuiMerchant guiMerchant, MerchantRecipe merchantRecipe) {
-        Minecraft minecraft = Minecraft.getMinecraft();
-        EntityPlayer player = minecraft.thePlayer;
         ContainerMerchant containerMerchant = (ContainerMerchant) guiMerchant.inventorySlots;
-        ItemStack itemToBuy = merchantRecipe.getItemToBuy();
-        ItemStack secondItemToBuy = merchantRecipe.getSecondItemToBuy();
-        int itemToBuyCount = 0;
-        int secondItemToBuyCount = 0;
-        for (int index = 3; index < 39 && index < containerMerchant.inventorySlots.size(); index++) {
-            ItemStack itemStack = containerMerchant.inventorySlots.get(index).getStack();
-            if (matchesMerchantItem(itemStack, itemToBuy)) {
-                itemToBuyCount += itemStack.stackSize;
-            }
-            if (secondItemToBuy != null && matchesMerchantItem(itemStack, secondItemToBuy)) {
-                secondItemToBuyCount += itemStack.stackSize;
-            }
-        }
-        boolean sameItem = secondItemToBuy != null
-            && ItemStack.areItemsEqual(itemToBuy, secondItemToBuy)
-            && ItemStack.areItemStackTagsEqual(itemToBuy, secondItemToBuy);
-        if (sameItem ? itemToBuyCount < itemToBuy.stackSize + secondItemToBuy.stackSize
-            : itemToBuyCount < itemToBuy.stackSize || secondItemToBuyCount < secondItemToBuy.stackSize) {
+        MerchantClickState state = new MerchantClickState(containerMerchant, Minecraft.getMinecraft().thePlayer);
+        if (state.cursorStack != null) {
             return;
         }
         for (int index = 0; index < 2; index++) {
-            if (containerMerchant.inventorySlots.get(index).getHasStack()) {
-                minecraft.playerController.windowClick(containerMerchant.windowId, index, 0, 1, player);
+            if (state.slotStacks[index] != null) {
+                if (!appendMerchantClick(state, index, 0, 1) || state.slotStacks[index] != null) {
+                    return;
+                }
             }
         }
-        if (containerMerchant.inventorySlots.get(0).getHasStack() || containerMerchant.inventorySlots.get(1).getHasStack()
-            || player.inventory.getItemStack() != null) {
+        state.slotStacks[2] = null;
+        if (!moveMerchantItemToSlot(state, merchantRecipe.getItemToBuy(), merchantRecipe.getItemToBuy().stackSize, 0)) {
             return;
         }
-        if (!moveMerchantItemToSlot(guiMerchant, itemToBuy, itemToBuy.stackSize, 0)) {
+        ItemStack secondItemToBuy = merchantRecipe.getSecondItemToBuy();
+        if (secondItemToBuy != null && !moveMerchantItemToSlot(state, secondItemToBuy, secondItemToBuy.stackSize, 1)) {
             return;
         }
-        if (secondItemToBuy != null && !moveMerchantItemToSlot(guiMerchant, secondItemToBuy, secondItemToBuy.stackSize, 1)) {
+        state.slotStacks[2] = merchantRecipe.getItemToSell().copy();
+        if (!appendMerchantClick(state, 2, 0, 1)) {
             return;
         }
-        if (containerMerchant.inventorySlots.get(2).getHasStack()) {
-            minecraft.playerController.windowClick(containerMerchant.windowId, 2, 0, 1, player);
+        for (C0EPacketClickWindow packet : state.packets) {
+            PacketUtils.sendPacketNoEvent(packet);
         }
     }
 
     public static void fillMerchantTrade(GuiMerchant guiMerchant, MerchantRecipe merchantRecipe) {
-        Minecraft minecraft = Minecraft.getMinecraft();
-        EntityPlayer player = minecraft.thePlayer;
-        ContainerMerchant containerMerchant = (ContainerMerchant)guiMerchant.inventorySlots;
-        for (int index = 0; index < 2; index++) {
-            if (containerMerchant.inventorySlots.get(index).getHasStack()) {
-                minecraft.playerController.windowClick(containerMerchant.windowId, index, 0, 1, player);
-            }
-        }
-        quickMoveMerchantItem(guiMerchant, merchantRecipe.getItemToBuy());
-        quickMoveMerchantItem(guiMerchant, merchantRecipe.getSecondItemToBuy());
-    }
-
-    private static void quickMoveMerchantItem(GuiMerchant guiMerchant, ItemStack requiredItem) {
-        if (requiredItem == null) {
+        ContainerMerchant containerMerchant = (ContainerMerchant) guiMerchant.inventorySlots;
+        MerchantClickState state = new MerchantClickState(containerMerchant, Minecraft.getMinecraft().thePlayer);
+        if (state.cursorStack != null) {
             return;
         }
-        Minecraft minecraft = Minecraft.getMinecraft();
-        EntityPlayer player = minecraft.thePlayer;
-        for (int index = 3; index < 39 && index < guiMerchant.inventorySlots.inventorySlots.size(); index++) {
-            Slot slot = guiMerchant.inventorySlots.inventorySlots.get(index);
-            ItemStack itemStack = slot.getStack();
-            if (matchesMerchantItem(itemStack, requiredItem)) {
-                minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, slot.slotNumber, 0, 1, player);
-                return;
+        for (int index = 0; index < 2; index++) {
+            if (state.slotStacks[index] != null) {
+                if (!appendMerchantClick(state, index, 0, 1) || state.slotStacks[index] != null) {
+                    return;
+                }
             }
+        }
+        state.slotStacks[2] = null;
+        if (!moveMerchantItemToSlot(state, merchantRecipe.getItemToBuy(), merchantRecipe.getItemToBuy().stackSize, 0)) {
+            return;
+        }
+        ItemStack secondItemToBuy = merchantRecipe.getSecondItemToBuy();
+        if (secondItemToBuy != null && !moveMerchantItemToSlot(state, secondItemToBuy, secondItemToBuy.stackSize, 1)) {
+            return;
+        }
+        for (C0EPacketClickWindow packet : state.packets) {
+            PacketUtils.sendPacketNoEvent(packet);
         }
     }
 
-    private static boolean moveMerchantItemToSlot(GuiMerchant guiMerchant, ItemStack requiredItem, int amount, int targetSlot) {
-        Minecraft minecraft = Minecraft.getMinecraft();
-        EntityPlayer player = minecraft.thePlayer;
+    private static boolean moveMerchantItemToSlot(MerchantClickState state, ItemStack requiredItem, int amount, int targetSlot) {
+        if (requiredItem == null) {
+            return true;
+        }
         int remaining = amount;
-        for (int index = 3; index < 39 && index < guiMerchant.inventorySlots.inventorySlots.size() && remaining > 0; index++) {
-            Slot sourceSlot = guiMerchant.inventorySlots.inventorySlots.get(index);
-            ItemStack sourceStack = sourceSlot.getStack();
+        for (int index = 3; index < 39 && index < state.slotStacks.length && remaining > 0; index++) {
+            ItemStack sourceStack = state.slotStacks[index];
             if (!matchesMerchantItem(sourceStack, requiredItem)) {
                 continue;
             }
             int sourceAmount = sourceStack.stackSize;
             int moveAmount = Math.min(remaining, sourceAmount);
-            minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, sourceSlot.slotNumber, 0, 0, player);
+            if (!appendMerchantClick(state, index, 0, 0)) {
+                return false;
+            }
             if (moveAmount == sourceAmount) {
-                minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, targetSlot, 0, 0, player);
+                if (!appendMerchantClick(state, targetSlot, 0, 0)) {
+                    return false;
+                }
             } else {
                 for (int count = 0; count < moveAmount; count++) {
-                    minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, targetSlot, 1, 0, player);
+                    if (!appendMerchantClick(state, targetSlot, 1, 0)) {
+                        return false;
+                    }
                 }
-                minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, sourceSlot.slotNumber, 0, 0, player);
+                if (!appendMerchantClick(state, index, 0, 0)) {
+                    return false;
+                }
             }
             remaining -= moveAmount;
         }
-        return remaining == 0 && player.inventory.getItemStack() == null;
+        return remaining == 0 && state.cursorStack == null;
+    }
+
+    private static boolean appendMerchantClick(MerchantClickState state, int slotId, int clickedButton, int mode) {
+        if (slotId < 0 || slotId >= state.slotStacks.length || (mode != 0 && mode != 1)
+            || clickedButton < 0 || clickedButton > 1) {
+            return false;
+        }
+        Slot slot = state.containerMerchant.inventorySlots.get(slotId);
+        ItemStack slotStack = state.slotStacks[slotId];
+        ItemStack clickedItem = slotStack == null ? null : slotStack.copy();
+        boolean changed = false;
+        if (mode == 1) {
+            if (slotStack == null || !slot.canTakeStack(state.player)) {
+                return false;
+            }
+            ItemStack originalStack = slotStack.copy();
+            if (!mergeMerchantStack(state, slotStack, 3, 39, slotId == 2)) {
+                return false;
+            }
+            if (slotStack.stackSize == 0) {
+                state.slotStacks[slotId] = null;
+            }
+            clickedItem = originalStack;
+            changed = true;
+        } else if (slotStack == null) {
+            if (state.cursorStack == null || !slot.isItemValid(state.cursorStack)) {
+                return false;
+            }
+            int amount = clickedButton == 0 ? state.cursorStack.stackSize : 1;
+            amount = Math.min(amount, slot.getItemStackLimit(state.cursorStack));
+            amount = Math.min(amount, state.cursorStack.getMaxStackSize());
+            if (amount <= 0) {
+                return false;
+            }
+            ItemStack placedStack = state.cursorStack.copy();
+            placedStack.stackSize = amount;
+            state.slotStacks[slotId] = placedStack;
+            state.cursorStack.stackSize -= amount;
+            if (state.cursorStack.stackSize <= 0) {
+                state.cursorStack = null;
+            }
+            changed = true;
+        } else if (state.cursorStack == null) {
+            if (!slot.canTakeStack(state.player)) {
+                return false;
+            }
+            int amount = clickedButton == 0 ? slotStack.stackSize : (slotStack.stackSize + 1) / 2;
+            if (amount <= 0) {
+                return false;
+            }
+            state.cursorStack = slotStack.copy();
+            state.cursorStack.stackSize = amount;
+            slotStack.stackSize -= amount;
+            if (slotStack.stackSize <= 0) {
+                state.slotStacks[slotId] = null;
+            }
+            changed = true;
+        } else if (slot.canTakeStack(state.player) && slot.isItemValid(state.cursorStack)
+            && ItemStack.areItemsEqual(slotStack, state.cursorStack)
+            && ItemStack.areItemStackTagsEqual(slotStack, state.cursorStack)) {
+            int amount = clickedButton == 0 ? state.cursorStack.stackSize : 1;
+            amount = Math.min(amount, slot.getItemStackLimit(state.cursorStack) - slotStack.stackSize);
+            amount = Math.min(amount, state.cursorStack.getMaxStackSize() - slotStack.stackSize);
+            if (amount > 0) {
+                slotStack.stackSize += amount;
+                state.cursorStack.stackSize -= amount;
+                if (state.cursorStack.stackSize <= 0) {
+                    state.cursorStack = null;
+                }
+                changed = true;
+            }
+        } else if (slot.canTakeStack(state.player) && slot.isItemValid(state.cursorStack)
+            && state.cursorStack.stackSize <= slot.getItemStackLimit(state.cursorStack)) {
+            state.slotStacks[slotId] = state.cursorStack;
+            state.cursorStack = slotStack;
+            changed = true;
+        }
+        if (!changed) {
+            return false;
+        }
+        state.packets.add(new C0EPacketClickWindow(state.containerMerchant.windowId, slotId, clickedButton, mode,
+            clickedItem, state.containerMerchant.getNextTransactionID(state.player.inventory)));
+        return true;
+    }
+
+    private static boolean mergeMerchantStack(MerchantClickState state, ItemStack stack, int startIndex, int endIndex, boolean reverseDirection) {
+        boolean merged = false;
+        int index = reverseDirection ? endIndex - 1 : startIndex;
+        if (stack.isStackable()) {
+            while (stack.stackSize > 0 && ((!reverseDirection && index < endIndex) || (reverseDirection && index >= startIndex))) {
+                ItemStack targetStack = state.slotStacks[index];
+                if (targetStack != null && sameMerchantStack(stack, targetStack)) {
+                    int combinedSize = targetStack.stackSize + stack.stackSize;
+                    if (combinedSize <= stack.getMaxStackSize()) {
+                        stack.stackSize = 0;
+                        targetStack.stackSize = combinedSize;
+                        merged = true;
+                    } else if (targetStack.stackSize < stack.getMaxStackSize()) {
+                        stack.stackSize -= stack.getMaxStackSize() - targetStack.stackSize;
+                        targetStack.stackSize = stack.getMaxStackSize();
+                        merged = true;
+                    }
+                }
+                index += reverseDirection ? -1 : 1;
+            }
+        }
+        index = reverseDirection ? endIndex - 1 : startIndex;
+        while (stack.stackSize > 0 && ((!reverseDirection && index < endIndex) || (reverseDirection && index >= startIndex))) {
+            Slot slot = state.containerMerchant.inventorySlots.get(index);
+            if (state.slotStacks[index] == null && slot.isItemValid(stack)) {
+                state.slotStacks[index] = stack.copy();
+                stack.stackSize = 0;
+                merged = true;
+                break;
+            }
+            index += reverseDirection ? -1 : 1;
+        }
+        return merged;
+    }
+
+    private static boolean sameMerchantStack(ItemStack firstStack, ItemStack secondStack) {
+        return firstStack != null && secondStack != null && firstStack.getItem() == secondStack.getItem()
+            && (!firstStack.getHasSubtypes() || firstStack.getMetadata() == secondStack.getMetadata())
+            && ItemStack.areItemStackTagsEqual(firstStack, secondStack);
     }
 
     private static boolean matchesMerchantItem(ItemStack itemStack, ItemStack requiredItem) {
         return itemStack != null && requiredItem != null && ItemStack.areItemsEqual(itemStack, requiredItem)
             && (!requiredItem.hasTagCompound() || ItemStack.areItemStackTagsEqual(requiredItem, itemStack));
+    }
+
+    private static final class MerchantClickState {
+        private final ContainerMerchant containerMerchant;
+        private final EntityPlayer player;
+        private final ItemStack[] slotStacks;
+        private final List<C0EPacketClickWindow> packets = new ArrayList<>();
+        private ItemStack cursorStack;
+
+        private MerchantClickState(ContainerMerchant containerMerchant, EntityPlayer player) {
+            this.containerMerchant = containerMerchant;
+            this.player = player;
+            this.slotStacks = new ItemStack[containerMerchant.inventorySlots.size()];
+            for (int index = 0; index < this.slotStacks.length; index++) {
+                ItemStack stack = containerMerchant.inventorySlots.get(index).getStack();
+                this.slotStacks[index] = stack == null ? null : stack.copy();
+            }
+            ItemStack cursorStack = player.inventory.getItemStack();
+            this.cursorStack = cursorStack == null ? null : cursorStack.copy();
+        }
     }
 
     private static void drawPanel(int left, int top, int width, int height) {
