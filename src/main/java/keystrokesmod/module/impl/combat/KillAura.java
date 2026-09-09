@@ -1,7 +1,6 @@
 package keystrokesmod.module.impl.combat;
 
 import keystrokesmod.event.ClientRotationEvent;
-import keystrokesmod.event.PrePlayerInteractEvent;
 import keystrokesmod.helper.RotationHelper;
 import keystrokesmod.mixin.impl.accessor.IAccessorEntityRenderer;
 import keystrokesmod.module.Module;
@@ -10,11 +9,9 @@ import keystrokesmod.module.impl.minigames.SkyWars;
 import keystrokesmod.module.impl.world.AntiBot;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
-import keystrokesmod.utility.ReflectionUtils;
 import keystrokesmod.utility.RotationUtils;
 import keystrokesmod.utility.Utils;
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityCreature;
 import net.minecraft.entity.EntityLivingBase;
@@ -54,7 +51,6 @@ public class KillAura extends Module {
     private ButtonSetting attackGhasts;
     private ButtonSetting attackSnowmen;
     private ButtonSetting targetInvis;
-    private ButtonSetting disableInInventory;
     private ButtonSetting disableWhileMining;
     private ButtonSetting aimThroughBlocks;
     private ButtonSetting aimThroughEntities;
@@ -101,7 +97,6 @@ public class KillAura extends Module {
         this.registerSetting(attackSnowmen = new ButtonSetting("Attack snowmen", false));
         this.registerSetting(aimThroughBlocks = new ButtonSetting("Hit through walls", false));
         this.registerSetting(aimThroughEntities = new ButtonSetting("Hit through entities", false));
-        this.registerSetting(disableInInventory = new ButtonSetting("Disable in inventory", true));
         this.registerSetting(disableWhileMining = new ButtonSetting("Disable while mining", false));
         this.registerSetting(ignoreTeammates = new ButtonSetting("Ignore teammates", true));
         this.registerSetting(notUsingItem = new ButtonSetting("Not using item", false));
@@ -179,31 +174,25 @@ public class KillAura extends Module {
         } else {
             attackingEntity = null;
         }
-    }
 
-    @SubscribeEvent
-    public void onPrePlayerInteract(PrePlayerInteractEvent e) {
-        if (!Utils.nullCheck()) return;
-        if (target == null) return;
-        if (targetDistance > swingRange.getInput()) return;
+        if (attackingEntity == null || !basicCondition() || !settingCondition() || (notUsingItem.isToggled() && mc.thePlayer.isUsingItem())) {
+            nextClickTime = 0L;
+            return;
+        }
 
-        int key = mc.gameSettings.keyBindAttack.getKeyCode();
         long now = System.currentTimeMillis();
-        if (nextClickTime == 0) {
+        if (nextClickTime == 0L) {
             nextClickTime = now;
         }
+
         int clicks = 0;
         while (nextClickTime <= now) {
             clicks++;
             nextClickTime += nextDelay();
         }
 
-        if (!basicCondition() || !settingCondition()) return;
-        if (notUsingItem.isToggled() && mc.thePlayer.isUsingItem()) return;
-
         for (int i = 0; i < clicks; i++) {
-            KeyBinding.onTick(key);
-            ReflectionUtils.setButton(0, true);
+            Utils.attackEntity(attackingEntity, true, false);
         }
     }
 
@@ -478,12 +467,7 @@ public class KillAura extends Module {
             return false;
         } else if (weaponOnly.isToggled() && !Utils.holdingWeapon()) {
             return false;
-        } else if (disableWhileMining.isToggled() && Utils.isMining()) {
-            return false;
-        } else if (disableInInventory.isToggled() && mc.currentScreen != null) {
-            return false;
-        }
-        return true;
+        } else return !disableWhileMining.isToggled() || !Utils.isMining();
     }
 
     private long nextDelay() {
