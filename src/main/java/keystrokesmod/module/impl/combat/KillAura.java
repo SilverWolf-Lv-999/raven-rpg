@@ -23,6 +23,9 @@ import net.minecraft.entity.monster.EntityGiantZombie;
 import net.minecraft.entity.monster.EntityIronGolem;
 import net.minecraft.entity.monster.EntityPigZombie;
 import net.minecraft.entity.monster.EntitySilverfish;
+import net.minecraft.entity.monster.EntityGhast;
+import net.minecraft.entity.monster.EntitySnowman;
+import net.minecraft.entity.passive.EntityAnimal;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition;
@@ -47,6 +50,9 @@ public class KillAura extends Module {
     private SliderSetting switchDelay;
     private SliderSetting targets;
     private ButtonSetting attackMobs;
+    private ButtonSetting attackAnimals;
+    private ButtonSetting attackGhasts;
+    private ButtonSetting attackSnowmen;
     private ButtonSetting targetInvis;
     private ButtonSetting disableInInventory;
     private ButtonSetting disableWhileMining;
@@ -90,6 +96,9 @@ public class KillAura extends Module {
         this.registerSetting(targets = new SliderSetting("Targets", 3.0, 1.0, 10.0, 1.0));
         this.registerSetting(targetInvis = new ButtonSetting("Target invis", true));
         this.registerSetting(attackMobs = new ButtonSetting("Attack mobs", false));
+        this.registerSetting(attackAnimals = new ButtonSetting("Attack animals", false));
+        this.registerSetting(attackGhasts = new ButtonSetting("Attack ghasts", false));
+        this.registerSetting(attackSnowmen = new ButtonSetting("Attack snowmen", false));
         this.registerSetting(aimThroughBlocks = new ButtonSetting("Hit through walls", false));
         this.registerSetting(aimThroughEntities = new ButtonSetting("Hit through entities", false));
         this.registerSetting(disableInInventory = new ButtonSetting("Disable in inventory", true));
@@ -303,6 +312,18 @@ public class KillAura extends Module {
             if (AntiBot.isBot(entity) || (ignoreTeammates.isToggled() && Utils.isTeammate(entity))) {
                 return null;
             }
+        } else if (entity instanceof EntityAnimal) {
+            if (!attackAnimals.isToggled() || ((EntityAnimal) entity).deathTime != 0) {
+                return null;
+            }
+        } else if (entity instanceof EntityGhast) {
+            if (!attackGhasts.isToggled() || ((EntityGhast) entity).deathTime != 0) {
+                return null;
+            }
+        } else if (entity instanceof EntitySnowman) {
+            if (!attackSnowmen.isToggled() || ((EntitySnowman) entity).deathTime != 0) {
+                return null;
+            }
         } else if (entity instanceof EntityCreature && attackMobs.isToggled()) {
             EntityCreature creature = (EntityCreature) entity;
             if (creature.tasks == null || creature.isAIDisabled() || creature.deathTime != 0) {
@@ -334,7 +355,11 @@ public class KillAura extends Module {
     }
 
     private KillAuraTarget buildKillAuraTarget(EntityLivingBase entity, double distanceToBoundingBox, double maxRange) {
-        if (entity instanceof EntityCreature && attackMobs.isToggled() && !isHostile((EntityCreature) entity)) {
+        if (entity instanceof EntityCreature
+                && !(entity instanceof EntityAnimal)
+                && !(entity instanceof EntitySnowman)
+                && attackMobs.isToggled()
+                && !isHostile((EntityCreature) entity)) {
             return null;
         }
 
