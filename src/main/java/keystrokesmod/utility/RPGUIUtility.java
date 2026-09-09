@@ -167,7 +167,7 @@ public final class RPGUIUtility {
         return index < merchantRecipeList.size() ? index : -1;
     }
 
-    public static void selectAndFillMerchantTrade(GuiMerchant guiMerchant, int selectedMerchantRecipe) {
+    public static void selectAndFillMerchantTrade(GuiMerchant guiMerchant, int selectedMerchantRecipe, boolean completeTrade) {
         ContainerMerchant containerMerchant = (ContainerMerchant) guiMerchant.inventorySlots;
         guiMerchant.selectedMerchantRecipe = selectedMerchantRecipe;
         containerMerchant.setCurrentRecipeIndex(selectedMerchantRecipe);
@@ -178,8 +178,56 @@ public final class RPGUIUtility {
         if (merchantRecipeList != null && selectedMerchantRecipe >= 0 && selectedMerchantRecipe < merchantRecipeList.size()) {
             MerchantRecipe merchantRecipe = merchantRecipeList.get(selectedMerchantRecipe);
             if (!merchantRecipe.isRecipeDisabled()) {
-                fillMerchantTrade(guiMerchant, merchantRecipe);
+                if (completeTrade) {
+                    completeMerchantTrade(guiMerchant, merchantRecipe);
+                } else {
+                    fillMerchantTrade(guiMerchant, merchantRecipe);
+                }
             }
+        }
+    }
+
+    private static void completeMerchantTrade(GuiMerchant guiMerchant, MerchantRecipe merchantRecipe) {
+        Minecraft minecraft = Minecraft.getMinecraft();
+        EntityPlayer player = minecraft.thePlayer;
+        ContainerMerchant containerMerchant = (ContainerMerchant) guiMerchant.inventorySlots;
+        ItemStack itemToBuy = merchantRecipe.getItemToBuy();
+        ItemStack secondItemToBuy = merchantRecipe.getSecondItemToBuy();
+        int itemToBuyCount = 0;
+        int secondItemToBuyCount = 0;
+        for (int index = 3; index < 39 && index < containerMerchant.inventorySlots.size(); index++) {
+            ItemStack itemStack = containerMerchant.inventorySlots.get(index).getStack();
+            if (matchesMerchantItem(itemStack, itemToBuy)) {
+                itemToBuyCount += itemStack.stackSize;
+            }
+            if (secondItemToBuy != null && matchesMerchantItem(itemStack, secondItemToBuy)) {
+                secondItemToBuyCount += itemStack.stackSize;
+            }
+        }
+        boolean sameItem = secondItemToBuy != null
+            && ItemStack.areItemsEqual(itemToBuy, secondItemToBuy)
+            && ItemStack.areItemStackTagsEqual(itemToBuy, secondItemToBuy);
+        if (sameItem ? itemToBuyCount < itemToBuy.stackSize + secondItemToBuy.stackSize
+            : itemToBuyCount < itemToBuy.stackSize || secondItemToBuyCount < secondItemToBuy.stackSize) {
+            return;
+        }
+        for (int index = 0; index < 2; index++) {
+            if (containerMerchant.inventorySlots.get(index).getHasStack()) {
+                minecraft.playerController.windowClick(containerMerchant.windowId, index, 0, 1, player);
+            }
+        }
+        if (containerMerchant.inventorySlots.get(0).getHasStack() || containerMerchant.inventorySlots.get(1).getHasStack()
+            || player.inventory.getItemStack() != null) {
+            return;
+        }
+        if (!moveMerchantItemToSlot(guiMerchant, itemToBuy, itemToBuy.stackSize, 0)) {
+            return;
+        }
+        if (secondItemToBuy != null && !moveMerchantItemToSlot(guiMerchant, secondItemToBuy, secondItemToBuy.stackSize, 1)) {
+            return;
+        }
+        if (containerMerchant.inventorySlots.get(2).getHasStack()) {
+            minecraft.playerController.windowClick(containerMerchant.windowId, 2, 0, 1, player);
         }
     }
 
@@ -205,11 +253,42 @@ public final class RPGUIUtility {
         for (int index = 3; index < 39 && index < guiMerchant.inventorySlots.inventorySlots.size(); index++) {
             Slot slot = guiMerchant.inventorySlots.inventorySlots.get(index);
             ItemStack itemStack = slot.getStack();
-            if (itemStack != null && ItemStack.areItemsEqual(itemStack, requiredItem) && (!requiredItem.hasTagCompound() || ItemStack.areItemStackTagsEqual(requiredItem, itemStack))) {
+            if (matchesMerchantItem(itemStack, requiredItem)) {
                 minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, slot.slotNumber, 0, 1, player);
                 return;
             }
         }
+    }
+
+    private static boolean moveMerchantItemToSlot(GuiMerchant guiMerchant, ItemStack requiredItem, int amount, int targetSlot) {
+        Minecraft minecraft = Minecraft.getMinecraft();
+        EntityPlayer player = minecraft.thePlayer;
+        int remaining = amount;
+        for (int index = 3; index < 39 && index < guiMerchant.inventorySlots.inventorySlots.size() && remaining > 0; index++) {
+            Slot sourceSlot = guiMerchant.inventorySlots.inventorySlots.get(index);
+            ItemStack sourceStack = sourceSlot.getStack();
+            if (!matchesMerchantItem(sourceStack, requiredItem)) {
+                continue;
+            }
+            int sourceAmount = sourceStack.stackSize;
+            int moveAmount = Math.min(remaining, sourceAmount);
+            minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, sourceSlot.slotNumber, 0, 0, player);
+            if (moveAmount == sourceAmount) {
+                minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, targetSlot, 0, 0, player);
+            } else {
+                for (int count = 0; count < moveAmount; count++) {
+                    minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, targetSlot, 1, 0, player);
+                }
+                minecraft.playerController.windowClick(guiMerchant.inventorySlots.windowId, sourceSlot.slotNumber, 0, 0, player);
+            }
+            remaining -= moveAmount;
+        }
+        return remaining == 0 && player.inventory.getItemStack() == null;
+    }
+
+    private static boolean matchesMerchantItem(ItemStack itemStack, ItemStack requiredItem) {
+        return itemStack != null && requiredItem != null && ItemStack.areItemsEqual(itemStack, requiredItem)
+            && (!requiredItem.hasTagCompound() || ItemStack.areItemStackTagsEqual(requiredItem, itemStack));
     }
 
     private static void drawPanel(int left, int top, int width, int height) {

@@ -4,6 +4,7 @@ import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.RPGUI;
 import keystrokesmod.utility.RPGUIUtility;
 import net.minecraft.client.gui.GuiMerchant;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.inventory.Slot;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,7 +20,7 @@ public class MixinGuiContainer {
             GuiMerchant guiMerchant = (GuiMerchant) (Object) this;
             int recipeIndex = RPGUIUtility.getMerchantTradeIndex(guiMerchant, mouseX, mouseY);
             if (recipeIndex >= 0) {
-                RPGUIUtility.selectAndFillMerchantTrade(guiMerchant, recipeIndex);
+                RPGUIUtility.selectAndFillMerchantTrade(guiMerchant, recipeIndex, GuiScreen.isShiftKeyDown());
                 callbackInfo.cancel();
                 return;
             }
