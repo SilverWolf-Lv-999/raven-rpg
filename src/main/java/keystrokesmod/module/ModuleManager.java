@@ -93,6 +93,7 @@ public class ModuleManager {
     public static Displace displace;
     public static RPGUI rpgUi;
     public static NoInteractionLimit noInteractionLimit;
+    public static AutoAnswer autoAnswer;
 
     public void register() {
         this.addModule(chatCommands = new ChatCommands());
@@ -234,6 +235,7 @@ public class ModuleManager {
         this.addModule(weather = new Weather());
 
         this.addModule(new keystrokesmod.script.Manager());
+        this.addModule(autoAnswer = new AutoAnswer());
 
         movementFix.enable();
         antiBot.enable();
