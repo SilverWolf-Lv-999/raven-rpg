@@ -94,6 +94,7 @@ public class ModuleManager {
     public static RPGUI rpgUi;
     public static NoInteractionLimit noInteractionLimit;
     public static AutoAnswer autoAnswer;
+    public static AutoOperation autoOperation;
 
     public void register() {
         this.addModule(chatCommands = new ChatCommands());
@@ -236,6 +237,7 @@ public class ModuleManager {
 
         this.addModule(new keystrokesmod.script.Manager());
         this.addModule(autoAnswer = new AutoAnswer());
+        this.addModule(autoOperation = new AutoOperation());
 
         movementFix.enable();
         antiBot.enable();
