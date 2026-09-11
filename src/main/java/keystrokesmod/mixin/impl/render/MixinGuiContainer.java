@@ -45,8 +45,12 @@ public class MixinGuiContainer {
     }
 
     @Inject(method = "handleMouseClick", at = @At("HEAD"), cancellable = true)
-    private void raven$cancelManagedInventoryWindowClick(Slot slotIn, int slotId, int clickedButton, int clickType, CallbackInfo callbackInfo) {
+    private void raven$handleAutoOperation(Slot slotIn, int slotId, int clickedButton, int clickType, CallbackInfo callbackInfo) {
         if (shouldCancelManualInventoryInput()) {
+            callbackInfo.cancel();
+            return;
+        }
+        if (ModuleManager.autoOperation != null && ModuleManager.autoOperation.startOperation(slotIn, clickedButton, clickType)) {
             callbackInfo.cancel();
         }
     }
