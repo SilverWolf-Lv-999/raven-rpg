@@ -2,6 +2,7 @@ package keystrokesmod.module.impl.player;
 
 import keystrokesmod.mixin.impl.accessor.IAccessorPlayerControllerMP;
 import keystrokesmod.module.Module;
+import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.utility.Utils;
 import net.minecraft.inventory.Slot;
@@ -14,6 +15,10 @@ public class AutoShell extends Module {
     private int pendingStackSize;
     private boolean commandSent;
     public final SliderSetting delay = new SliderSetting("send cmd delay", 0.0, 0.0, 20.0, 1.0);
+    public final ButtonSetting item = new ButtonSetting("item", true);
+
+    public final ButtonSetting money = new ButtonSetting("money", false); // 自动将灵魂空间里的钱卖出去
+    public final ButtonSetting silentMode = new ButtonSetting("silent", false); // 静态模式，客户端不会出现界面，纯发包操作
 
     public AutoShell() {
         super("Auto Shell", category.player);
