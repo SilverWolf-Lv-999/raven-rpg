@@ -31,6 +31,7 @@ public final class RPGUtility {
     private static int cachedTradingMarketSignTick = -1;
     private static boolean cachedTradingMarketSignFound;
 
+    // 判断是否物品是否是钱币
     public static boolean isRPGMoney(ItemStack stack) {
         boolean hasMoneyTip = false;
         boolean hasFrom = false;
@@ -44,6 +45,7 @@ public final class RPGUtility {
         return hasMoneyTip && hasFrom;
     }
 
+    // 判断是否是在全球市场
     public static boolean isOnTradingMarket(EntityPlayerSP player) {
         if (!Utils.nullCheck() || player == null || player.worldObj == null) {
             TRADING_MARKET_VILLAGER_CACHE.clear();
@@ -185,7 +187,7 @@ public final class RPGUtility {
             RPG_MONEYS.add(new RPGMoney("钻", Items.diamond));
             RPG_MONEYS.add(new RPGMoney("绿宝石", Items.emerald));
             RPG_MONEYS.add(new RPGMoney("蓝宝石", Items.dye, 4));
-            RPG_MONEYS.add(new RPGMoney("极品宝石", Items.prismarine_crystals));
+            RPG_MONEYS.add(new RPGMoney("极品宝石", Items.prismarine_crystals));// 海晶沙粒
         }
     }
 }
