@@ -1,12 +1,12 @@
 package keystrokesmod.module.impl.combat;
 
+import keystrokesmod.event.KnockbackEvent;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.movement.LongJump;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.utility.Utils;
-import net.minecraftforge.event.entity.living.LivingEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import org.lwjgl.input.Keyboard;
 
@@ -34,15 +34,9 @@ public class Velocity extends Module {
     }
 
     @SubscribeEvent
-    public void onLivingUpdate(LivingEvent.LivingUpdateEvent ev) {
-        if (Utils.nullCheck() && !LongJump.stopVelocity && !disable) {
-            if (ev.entity != mc.thePlayer) {
-                return;
-            }
+    public void onKnockback(KnockbackEvent event) {
+        if (!event.isCanceled() && Utils.nullCheck() && !LongJump.stopVelocity && !disable) {
             if (ModuleManager.antiKnockback.isEnabled()) {
-                return;
-            }
-            if (mc.thePlayer.maxHurtTime <= 0 || mc.thePlayer.hurtTime != mc.thePlayer.maxHurtTime) {
                 return;
             }
             if (onlyWhileTargeting.isToggled() && (mc.objectMouseOver == null || mc.objectMouseOver.entityHit == null)) {
@@ -60,13 +54,9 @@ public class Velocity extends Module {
                     return;
                 }
             }
-            if (horizontal.getInput() != 100.0D) {
-                mc.thePlayer.motionX *= horizontal.getInput() / 100;
-                mc.thePlayer.motionZ *= horizontal.getInput() / 100;
-            }
-            if (vertical.getInput() != 100.0D) {
-                mc.thePlayer.motionY *= vertical.getInput() / 100;
-            }
+            event.setX(event.getX() * horizontal.getInput() / 100.0D);
+            event.setY(event.getY() * vertical.getInput() / 100.0D);
+            event.setZ(event.getZ() * horizontal.getInput() / 100.0D);
         }
     }
 }

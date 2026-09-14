@@ -1,6 +1,7 @@
 package keystrokesmod.mixin.impl.entity;
 
 import keystrokesmod.event.ClientLookEvent;
+import keystrokesmod.event.KnockbackEvent;
 import keystrokesmod.event.PlayerMoveEvent;
 import keystrokesmod.event.StepHeightEvent;
 import keystrokesmod.event.StrafeEvent;
@@ -26,6 +27,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MixinEntity {
     @Shadow
     public double motionX;
+    @Shadow
+    public double motionY;
     @Shadow
     public double motionZ;
     @Shadow
@@ -103,6 +106,20 @@ public abstract class MixinEntity {
     private void injectPlayerMoveEvent(double x, double y, double z, CallbackInfo ci) {
         if (((Object) this) instanceof EntityPlayerSP) {
             MinecraftForge.EVENT_BUS.post(new PlayerMoveEvent(x, y, z));
+        }
+    }
+
+    @Inject(method = "setVelocity", at = @At("HEAD"), cancellable = true)
+    private void injectKnockbackEvent(double x, double y, double z, CallbackInfo ci) {
+        if ((Object) this instanceof EntityPlayerSP) {
+            KnockbackEvent event = new KnockbackEvent(x, y, z);
+            MinecraftForge.EVENT_BUS.post(event);
+            if (event.isCanceled()) {
+                this.motionX = event.getX();
+                this.motionY = event.getY();
+                this.motionZ = event.getZ();
+                ci.cancel();
+            }
         }
     }
 }
