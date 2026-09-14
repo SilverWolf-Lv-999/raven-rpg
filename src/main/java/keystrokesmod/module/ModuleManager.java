@@ -193,6 +193,7 @@ public class ModuleManager {
         this.addModule(noFall = new NoFall());
         this.addModule(noInteractionLimit = new NoInteractionLimit());
         this.addModule(noRotate = new NoRotate());
+        this.addModule(new Regen());
         this.addModule(safeWalk = new SafeWalk());
         this.addModule(new WaterBucket());
 
