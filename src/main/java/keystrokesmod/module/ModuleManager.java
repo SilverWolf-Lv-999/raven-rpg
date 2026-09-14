@@ -96,6 +96,7 @@ public class ModuleManager {
     public static NoInteractionLimit noInteractionLimit;
     public static AutoAnswer autoAnswer;
     public static AutoOperation autoOperation;
+    public static Disabler disabler;
 
     public void register() {
         this.addModule(chatCommands = new ChatCommands());
@@ -241,6 +242,7 @@ public class ModuleManager {
         this.addModule(new keystrokesmod.script.Manager());
         this.addModule(autoAnswer = new AutoAnswer());
         this.addModule(autoOperation = new AutoOperation());
+        this.addModule(disabler = new Disabler());
 
         movementFix.enable();
         antiBot.enable();

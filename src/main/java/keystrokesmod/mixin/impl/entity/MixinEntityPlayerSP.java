@@ -29,6 +29,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EntityPlayerSP.class)
@@ -175,6 +176,11 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
             this.serverSprintState = flag;
         }
 
+        if (flag && ModuleManager.disabler != null && ModuleManager.disabler.isEnabled()
+                && ModuleManager.disabler.startSprint.isToggled()) {
+            this.sendQueue.addToSendQueue(new C0BPacketEntityAction(this, C0BPacketEntityAction.Action.START_SPRINTING));
+        }
+
         boolean flag1 = preMotionEvent.isSneaking();
         if (flag1 != this.serverSneakState) {
             if (flag1) {
@@ -238,6 +244,16 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
             }
         }
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(new PostMotionEvent());
+    }
+
+    @ModifyVariable(method = "sendChatMessage(Ljava/lang/String;)V", at = @At("HEAD"), argsOnly = true)
+    private String raven$spigotSpam(String message) {
+        if (ModuleManager.disabler != null
+                && ModuleManager.disabler.isEnabled()
+                && ModuleManager.disabler.spigotSpam.isToggled()) {
+            return ModuleManager.disabler.message.getText() + " " + message;
+        }
+        return message;
     }
 
     @Overwrite
