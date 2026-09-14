@@ -1,6 +1,7 @@
 package keystrokesmod.mixin.impl.render;
 
 import keystrokesmod.mixin.impl.accessor.IAccessorGuiScreen;
+import keystrokesmod.mixin.interfaces.IMerchantGui;
 import keystrokesmod.module.impl.client.RPGUI;
 import keystrokesmod.utility.RPGUIUtility;
 import net.minecraft.client.gui.GuiMerchant;
@@ -11,10 +12,13 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(GuiMerchant.class)
-public class MixinGuiMerchant {
+public class MixinGuiMerchant implements IMerchantGui {
+    private int raven$merchantScrollRow;
+
     @Inject(method = "initGui()V", at = @At("HEAD"))
     private void raven$prepareRpgMerchantGui(CallbackInfo callbackInfo) {
         if (RPGUI.shouldStyleMerchant()) {
+            this.raven$merchantScrollRow = 0;
             RPGUIUtility.updateMerchantGuiSize((GuiMerchant) (Object) this);
         }
     }
@@ -33,6 +37,7 @@ public class MixinGuiMerchant {
         GuiMerchant guiMerchant = (GuiMerchant) (Object) this;
         if (RPGUI.shouldStyleMerchant()) {
             RPGUIUtility.updateMerchantGuiSize(guiMerchant);
+            this.raven$merchantScrollRow = RPGUIUtility.clampMerchantTradeScroll(guiMerchant, this.raven$merchantScrollRow);
         } else if (guiMerchant.xSize != 176) {
             guiMerchant.xSize = 176;
             guiMerchant.guiLeft = (guiMerchant.width - guiMerchant.xSize) / 2;
@@ -42,7 +47,7 @@ public class MixinGuiMerchant {
     @Inject(method = "drawGuiContainerBackgroundLayer(FII)V", at = @At("HEAD"), cancellable = true)
     private void raven$drawRpgBackground(float partialTicks, int mouseX, int mouseY, CallbackInfo callbackInfo) {
         if (RPGUI.shouldStyleMerchant()) {
-            RPGUIUtility.drawMerchantBackground((GuiMerchant) (Object) this);
+            RPGUIUtility.drawMerchantBackground((GuiMerchant) (Object) this, this.raven$merchantScrollRow);
             callbackInfo.cancel();
         }
     }
@@ -59,10 +64,20 @@ public class MixinGuiMerchant {
     private void raven$drawRpgTradeList(int mouseX, int mouseY, float partialTicks, CallbackInfo callbackInfo) {
         if (RPGUI.shouldStyleMerchant()) {
             GuiMerchant guiMerchant = (GuiMerchant) (Object) this;
-            ItemStack hoveredStack = RPGUIUtility.drawMerchantTradeList(guiMerchant, guiMerchant.selectedMerchantRecipe, mouseX, mouseY);
+            ItemStack hoveredStack = RPGUIUtility.drawMerchantTradeList(guiMerchant, guiMerchant.selectedMerchantRecipe, mouseX, mouseY, this.raven$merchantScrollRow);
             if (hoveredStack != null) {
                 ((IAccessorGuiScreen) guiMerchant).callRenderToolTip(hoveredStack, mouseX, mouseY);
             }
         }
+    }
+
+    @Override
+    public int raven$getMerchantScrollRow() {
+        return this.raven$merchantScrollRow;
+    }
+
+    @Override
+    public void raven$setMerchantScrollRow(int scrollRow) {
+        this.raven$merchantScrollRow = scrollRow;
     }
 }

@@ -2,6 +2,7 @@ package keystrokesmod.mixin.impl.render;
 
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.RPGUI;
+import keystrokesmod.mixin.interfaces.IMerchantGui;
 import keystrokesmod.utility.RPGUIUtility;
 import net.minecraft.client.gui.GuiMerchant;
 import net.minecraft.client.gui.GuiScreen;
@@ -15,10 +16,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GuiContainer.class)
 public class MixinGuiContainer {
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-    private void raven$selectRpgTrade(int mouseX, int mouseY, int mouseButton, CallbackInfo callbackInfo) {
-        if (RPGUI.shouldStyleMerchant() && mouseButton == 0 && (Object) this instanceof GuiMerchant) {
+    private void raven$cancelManagedInventoryInput(int mouseX, int mouseY, int mouseButton, CallbackInfo callbackInfo) {
+        if (RPGUI.shouldStyleMerchant() && mouseButton == 0 && (Object) this instanceof GuiMerchant
+            && (Object) this instanceof IMerchantGui) {
             GuiMerchant guiMerchant = (GuiMerchant) (Object) this;
-            int recipeIndex = RPGUIUtility.getMerchantTradeIndex(guiMerchant, mouseX, mouseY);
+            int recipeIndex = RPGUIUtility.getMerchantTradeIndex(guiMerchant, mouseX, mouseY,
+                ((IMerchantGui) (Object) this).raven$getMerchantScrollRow());
             if (recipeIndex >= 0) {
                 RPGUIUtility.selectAndFillMerchantTrade(guiMerchant, recipeIndex, GuiScreen.isShiftKeyDown());
                 callbackInfo.cancel();
