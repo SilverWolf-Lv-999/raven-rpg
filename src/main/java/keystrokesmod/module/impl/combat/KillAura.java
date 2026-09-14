@@ -13,6 +13,7 @@ import keystrokesmod.utility.Utils;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition;
@@ -25,28 +26,30 @@ import org.lwjgl.input.Mouse;
 import java.util.*;
 
 public class KillAura extends Module {
-    private SliderSetting targetCPS;
-    private SliderSetting fov;
-    private SliderSetting attackRange;
-    private SliderSetting swingRange;
-    private SliderSetting aimRange;
+    private final SliderSetting targetCPS;
+    private final SliderSetting fov;
+    private final SliderSetting attackRange;
+    private final SliderSetting swingRange;
+    private final SliderSetting aimRange;
     public SliderSetting rotationMode;
-    private SliderSetting speed;
-    private SliderSetting sortMode;
-    private SliderSetting switchDelay;
-    private SliderSetting targets;
-    private ButtonSetting attackMobs;
-    private ButtonSetting targetInvis;
-    private ButtonSetting disableWhileMining;
-    private ButtonSetting aimThroughBlocks;
-    private ButtonSetting aimThroughEntities;
-    private ButtonSetting ignoreTeammates;
-    private ButtonSetting prioritizeEnemies;
-    private ButtonSetting notUsingItem;
-    private ButtonSetting requireMouseDown;
-    private ButtonSetting weaponOnly;
-    private ButtonSetting mutiMode;
-    private ButtonSetting targetDead;
+    private final SliderSetting speed;
+    private final SliderSetting sortMode;
+    private final SliderSetting switchDelay;
+    private final SliderSetting targets;
+    private final ButtonSetting attackMobs;
+    private final ButtonSetting targetInvis;
+    private final ButtonSetting disableWhileMining;
+    private final ButtonSetting aimThroughBlocks;
+    private final ButtonSetting aimThroughEntities;
+    private final ButtonSetting ignoreTeammates;
+    private final ButtonSetting prioritizeEnemies;
+    private final ButtonSetting notUsingItem;
+    private final ButtonSetting requireMouseDown;
+    private final ButtonSetting weaponOnly;
+    private final ButtonSetting mutiMode;
+    private final ButtonSetting targetDead;
+    private final ButtonSetting targetArmorStand;
+    private final ButtonSetting targetPlayer;
 
     private String[] rotationModes = new String[]{"Silent", "Lock view", "None"};
     private String[] sortModes = new String[]{"Distance", "Health", "Hurt time", "Yaw"};
@@ -89,6 +92,8 @@ public class KillAura extends Module {
         this.registerSetting(weaponOnly = new ButtonSetting("Weapon only", false));
         this.registerSetting(mutiMode = new ButtonSetting("Muti mode", false));
         this.registerSetting(targetDead = new ButtonSetting("Target dead", false));
+        this.registerSetting(targetArmorStand = new ButtonSetting("Target armor stand", false));
+        this.registerSetting(targetPlayer = new ButtonSetting("Target player", false));
     }
 
     @Override
@@ -284,10 +289,17 @@ public class KillAura extends Module {
 
         if (entity instanceof EntityPlayer) {
             EntityPlayer player = (EntityPlayer) entity;
+            if (!targetPlayer.isToggled()) {
+                return null;
+            }
             if (Utils.isFriended(player)) {
                 return null;
             }
             if (AntiBot.isBot(entity) || (ignoreTeammates.isToggled() && Utils.isTeammate(entity))) {
+                return null;
+            }
+        } else if (entity instanceof EntityArmorStand) {
+            if (!targetArmorStand.isToggled()) {
                 return null;
             }
         } else {
