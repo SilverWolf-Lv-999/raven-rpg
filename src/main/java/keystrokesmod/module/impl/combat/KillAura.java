@@ -46,6 +46,7 @@ public class KillAura extends Module {
     private ButtonSetting requireMouseDown;
     private ButtonSetting weaponOnly;
     private ButtonSetting mutiMode;
+    private ButtonSetting targetDead;
 
     private String[] rotationModes = new String[]{"Silent", "Lock view", "None"};
     private String[] sortModes = new String[]{"Distance", "Health", "Hurt time", "Yaw"};
@@ -58,6 +59,7 @@ public class KillAura extends Module {
     }
 
     private HashMap<Integer, Integer> hitMap = new HashMap<>();
+    private final List<KillAuraTarget> attackTargets = new ArrayList<>();
 
     private long nextClickTime;
     private Random rand;
@@ -86,6 +88,7 @@ public class KillAura extends Module {
         this.registerSetting(requireMouseDown = new ButtonSetting("Require mouse down", false));
         this.registerSetting(weaponOnly = new ButtonSetting("Weapon only", false));
         this.registerSetting(mutiMode = new ButtonSetting("Muti mode", false));
+        this.registerSetting(targetDead = new ButtonSetting("Target dead", false));
     }
 
     @Override
@@ -175,7 +178,16 @@ public class KillAura extends Module {
         }
 
         for (int i = 0; i < clicks; i++) {
-            Utils.attackEntity(attackingEntity, true, false);
+            if (mutiMode.isToggled()) {
+                for (KillAuraTarget attackTarget : attackTargets) {
+                    EntityLivingBase entity = attackTarget.entity;
+                    if (canTarget(entity) && RotationUtils.distanceFromEyeToClosestOnAABB(entity) <= attackRange.getInput()) {
+                        Utils.attackEntity(entity, true, false);
+                    }
+                }
+            } else if (canTarget(attackingEntity)) {
+                Utils.attackEntity(attackingEntity, true, false);
+            }
         }
     }
 
@@ -192,12 +204,14 @@ public class KillAura extends Module {
             attackingEntity = null;
             targetDistance = Double.MAX_VALUE;
             nextClickTime = 0L;
+            attackTargets.clear();
         } else {
             target = (EntityLivingBase) entity;
         }
     }
 
     private void handleTarget() {
+        attackTargets.clear();
         double maxRange = Math.max(attackRange.getInput(), aimRange.getInput());
         float fovValue = (float) fov.getInput();
 
@@ -237,6 +251,11 @@ public class KillAura extends Module {
         }
 
         if (!attackTargets.isEmpty()) {
+            this.attackTargets.addAll(attackTargets);
+            if (mutiMode.isToggled()) {
+                setTarget(attackTargets.get(0).entity);
+                return;
+            }
             KillAuraTarget selectedAttackTarget = selectAttackTarget(attackTargets);
             if (selectedAttackTarget != null) {
                 setTarget(selectedAttackTarget.entity);
@@ -254,13 +273,18 @@ public class KillAura extends Module {
     }
 
     private Candidate getCandidateTarget(Entity entity, double maxRange, float fovValue) {
-        if (!(entity instanceof EntityLivingBase) || entity == mc.thePlayer || entity.isDead) {
+        if (!(entity instanceof EntityLivingBase) || entity == mc.thePlayer) {
+            return null;
+        }
+
+        EntityLivingBase livingEntity = (EntityLivingBase) entity;
+        if (!canTarget(livingEntity)) {
             return null;
         }
 
         if (entity instanceof EntityPlayer) {
             EntityPlayer player = (EntityPlayer) entity;
-            if (Utils.isFriended(player) || player.deathTime != 0) {
+            if (Utils.isFriended(player)) {
                 return null;
             }
             if (AntiBot.isBot(entity) || (ignoreTeammates.isToggled() && Utils.isTeammate(entity))) {
@@ -285,7 +309,7 @@ public class KillAura extends Module {
             return null;
         }
 
-        return new Candidate((EntityLivingBase) entity, distance);
+        return new Candidate(livingEntity, distance);
     }
 
     private KillAuraTarget buildKillAuraTarget(EntityLivingBase entity, double distanceToBoundingBox, double maxRange) {
@@ -350,6 +374,10 @@ public class KillAura extends Module {
             return false;
         }
         return !mc.thePlayer.isDead;
+    }
+
+    private boolean canTarget(EntityLivingBase entity) {
+        return targetDead.isToggled() || (!entity.isDead && entity.deathTime == 0);
     }
 
     private boolean settingCondition() {
