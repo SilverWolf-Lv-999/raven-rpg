@@ -46,6 +46,7 @@ public class ModuleManager {
     public static LongJump longJump;
     public static AntiBot antiBot;
     public static NoSlow noSlow;
+    public static NoSlowBreak noSlowBreak;
     public static KillAura killAura;
     public static AutoClicker autoClicker;
     public static HitSelect hitSelect;
@@ -155,6 +156,7 @@ public class ModuleManager {
         this.addModule(keepSprint = new KeepSprint());
         this.addModule(longJump = new LongJump());
         this.addModule(noSlow = new NoSlow());
+        this.addModule(noSlowBreak = new NoSlowBreak());
         this.addModule(new NullMove());
         this.addModule(new Speed());
         this.addModule(sprint = new Sprint());
