@@ -11,10 +11,10 @@ import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
 public class WTap extends Module {
-    private SliderSetting delayBetweenReset;
-    private SliderSetting delayUntilReset;
-    private SliderSetting chance;
-    private ButtonSetting playersOnly;
+    private final SliderSetting delayBetweenReset;
+    private final SliderSetting delayUntilReset;
+    private final SliderSetting chance;
+    private final ButtonSetting playersOnly;
 
     private long pendingResetAtMs;
     private long lastResetStartMs;

@@ -15,11 +15,12 @@ import org.lwjgl.input.Mouse;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class Module {
     protected ArrayList<Setting> settings;
-    private String moduleName;
-    private Module.category moduleCategory;
+    private final String moduleName;
+    private final Module.category moduleCategory;
     private volatile boolean enabled;
     private int keycode;
     protected static Minecraft mc;
@@ -46,7 +47,7 @@ public class Module {
         this.keycode = keycode;
         this.enabled = false;
         mc = Minecraft.getMinecraft();
-        this.settings = new ArrayList();
+        this.settings = new ArrayList<>();
     }
 
     public static Module getModule(Class<? extends Module> a) {
@@ -59,7 +60,7 @@ public class Module {
         this.keycode = 0;
         this.enabled = false;
         mc = Minecraft.getMinecraft();
-        this.settings = new ArrayList();
+        this.settings = new ArrayList<>();
     }
 
     public Module(Script script) {
@@ -168,7 +169,7 @@ public class Module {
 
     public String getInfoUpdate() { // when called updates the modules info, and sorts if necessary
         String info = getInfo();
-        if (info != lastInfo) {
+        if (!Objects.equals(info, lastInfo)) {
             sort = true;
         }
         lastInfo = info;
