@@ -3,6 +3,7 @@ package keystrokesmod.utility;
 import io.netty.buffer.Unpooled;
 import java.util.ArrayList;
 import java.util.List;
+import keystrokesmod.mixin.interfaces.IMerchantGui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
@@ -21,9 +22,9 @@ import net.minecraft.village.MerchantRecipe;
 import net.minecraft.village.MerchantRecipeList;
 
 public final class RPGUIUtility {
-    private static final int MERCHANT_TRADE_MAX_ROWS = 8;
-    private static final int MERCHANT_TRADE_COLUMN_WIDTH = 92;
-    private static final int MERCHANT_TRADE_ROW_HEIGHT = 19;
+    private static final int MERCHANT_GUI_WIDTH = 248;
+    private static final int MERCHANT_TRADE_LIST_LEFT = 180;
+    private static final int MERCHANT_TRADE_ROW_HEIGHT = 18;
 
     public static void drawChestBackground(net.minecraft.client.gui.inventory.GuiChest guiChest) {
         drawPanel(guiChest.guiLeft, guiChest.guiTop, guiChest.xSize, guiChest.ySize);
@@ -40,15 +41,9 @@ public final class RPGUIUtility {
     }
 
     public static void updateMerchantGuiSize(GuiMerchant guiMerchant) {
-        MerchantRecipeList merchantRecipeList = guiMerchant.getMerchant().getRecipes(Minecraft.getMinecraft().thePlayer);
-        int maxColumns = Math.max(1, (guiMerchant.width - 192) / MERCHANT_TRADE_COLUMN_WIDTH);
-        int columns = merchantRecipeList == null
-            ? 1
-            : Math.max(1, Math.min((merchantRecipeList.size() + MERCHANT_TRADE_MAX_ROWS - 1) / MERCHANT_TRADE_MAX_ROWS, maxColumns));
-        int width = 184 + columns * MERCHANT_TRADE_COLUMN_WIDTH;
-        if (guiMerchant.xSize != width) {
-            guiMerchant.xSize = width;
-            guiMerchant.guiLeft = (guiMerchant.width - width) / 2;
+        if (guiMerchant.xSize != MERCHANT_GUI_WIDTH) {
+            guiMerchant.xSize = MERCHANT_GUI_WIDTH;
+            guiMerchant.guiLeft = (guiMerchant.width - MERCHANT_GUI_WIDTH) / 2;
         }
     }
 
@@ -58,18 +53,14 @@ public final class RPGUIUtility {
             return 0;
         }
 
-        int columns = Math.max(1, (merchantRecipeList.size() + MERCHANT_TRADE_MAX_ROWS - 1) / MERCHANT_TRADE_MAX_ROWS);
-        int maxColumns = Math.max(1, (guiMerchant.width - 192) / MERCHANT_TRADE_COLUMN_WIDTH);
-        columns = Math.min(columns, maxColumns);
-        int rows = (merchantRecipeList.size() + columns - 1) / columns;
-        int visibleRows = Math.max(1, (guiMerchant.ySize - 16 + MERCHANT_TRADE_ROW_HEIGHT - 1) / MERCHANT_TRADE_ROW_HEIGHT);
-        return Math.max(0, Math.min(scrollRow, Math.max(0, rows - visibleRows)));
+        int visibleRows = Math.max(1, (guiMerchant.ySize - 16) / MERCHANT_TRADE_ROW_HEIGHT);
+        return Math.max(0, Math.min(scrollRow, Math.max(0, merchantRecipeList.size() - visibleRows)));
     }
 
     public static boolean isMerchantTradeListHovered(GuiMerchant guiMerchant, int mouseX, int mouseY) {
         MerchantRecipeList merchantRecipeList = guiMerchant.getMerchant().getRecipes(Minecraft.getMinecraft().thePlayer);
         return merchantRecipeList != null && !merchantRecipeList.isEmpty()
-            && mouseX >= guiMerchant.guiLeft + 182
+            && mouseX >= guiMerchant.guiLeft + MERCHANT_TRADE_LIST_LEFT
             && mouseX < guiMerchant.guiLeft + guiMerchant.xSize - 4
             && mouseY >= guiMerchant.guiTop + 9
             && mouseY < guiMerchant.guiTop + guiMerchant.ySize - 8;
@@ -87,31 +78,21 @@ public final class RPGUIUtility {
 
         MerchantRecipeList merchantRecipeList = guiMerchant.getMerchant().getRecipes(Minecraft.getMinecraft().thePlayer);
         if (merchantRecipeList != null && !merchantRecipeList.isEmpty()) {
-            int columns = Math.max(1, (merchantRecipeList.size() + MERCHANT_TRADE_MAX_ROWS - 1) / MERCHANT_TRADE_MAX_ROWS);
-            int maxColumns = Math.max(1, (guiMerchant.width - 192) / MERCHANT_TRADE_COLUMN_WIDTH);
-            columns = Math.min(columns, maxColumns);
-            int rows = (merchantRecipeList.size() + columns - 1) / columns;
-            int sidebarLeft = guiMerchant.guiLeft + 180;
+            int sidebarLeft = guiMerchant.guiLeft + MERCHANT_TRADE_LIST_LEFT;
             int sidebarTop = guiMerchant.guiTop + 7;
             Gui.drawRect(sidebarLeft, sidebarTop, guiMerchant.guiLeft + guiMerchant.xSize - 4, guiMerchant.guiTop + guiMerchant.ySize - 6, 0xFF9B9CA0);
             Gui.drawRect(sidebarLeft + 2, sidebarTop + 2, guiMerchant.guiLeft + guiMerchant.xSize - 6, guiMerchant.guiTop + guiMerchant.ySize - 8, 0xFFD5D5D7);
-            int visibleRows = Math.max(1, (guiMerchant.ySize - 16 + MERCHANT_TRADE_ROW_HEIGHT - 1) / MERCHANT_TRADE_ROW_HEIGHT);
+            int visibleRows = Math.max(1, (guiMerchant.ySize - 16) / MERCHANT_TRADE_ROW_HEIGHT);
             int firstRow = clampMerchantTradeScroll(guiMerchant, scrollRow);
-            int lastRow = Math.min(rows, firstRow + visibleRows);
+            int lastRow = Math.min(merchantRecipeList.size(), firstRow + visibleRows);
             RenderUtils.scissorPushGui(guiMerchant.guiLeft + 182, guiMerchant.guiTop + 9,
                 guiMerchant.xSize - 186, guiMerchant.ySize - 15);
-            for (int column = 0; column < columns; column++) {
-                for (int row = firstRow; row < lastRow; row++) {
-                    int index = column * rows + row;
-                    if (index >= merchantRecipeList.size()) {
-                        continue;
-                    }
-                    int left = guiMerchant.guiLeft + 184 + column * MERCHANT_TRADE_COLUMN_WIDTH;
-                    int top = guiMerchant.guiTop + 10 + (row - firstRow) * MERCHANT_TRADE_ROW_HEIGHT;
-                    drawSlot(left, top);
-                    drawSlot(left + 19, top);
-                    drawSlot(left + 38, top);
-                }
+            for (int index = firstRow; index < lastRow; index++) {
+                int left = guiMerchant.guiLeft + 184;
+                int top = guiMerchant.guiTop + 10 + (index - firstRow) * MERCHANT_TRADE_ROW_HEIGHT;
+                drawSlot(left, top);
+                drawSlot(left + 19, top);
+                drawSlot(left + 38, top);
             }
             RenderUtils.scissorPop();
         } else {
@@ -125,7 +106,7 @@ public final class RPGUIUtility {
         FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
         String title = guiMerchant.chatComponent == null ? "" : guiMerchant.chatComponent.getFormattedText();
         fontRenderer.drawString(title, 88 - fontRenderer.getStringWidth(title) / 2, 6, 0xFFFFFFFF);
-        fontRenderer.drawString("交易", 188, 6, 0xFFFFFFFF);
+        fontRenderer.drawString("交易", 212 - fontRenderer.getStringWidth("交易") / 2, 6, 0xFFFFFFFF);
         drawLabel(fontRenderer, Minecraft.getMinecraft().thePlayer.inventory.getDisplayName(), 8, guiMerchant.ySize - 96 + 2, 0xFF3F3F42);
     }
 
@@ -135,13 +116,9 @@ public final class RPGUIUtility {
             return null;
         }
 
-        int columns = Math.max(1, (merchantRecipeList.size() + MERCHANT_TRADE_MAX_ROWS - 1) / MERCHANT_TRADE_MAX_ROWS);
-        int maxColumns = Math.max(1, (guiMerchant.width - 192) / MERCHANT_TRADE_COLUMN_WIDTH);
-        columns = Math.min(columns, maxColumns);
-        int rows = (merchantRecipeList.size() + columns - 1) / columns;
-        int visibleRows = Math.max(1, (guiMerchant.ySize - 16 + MERCHANT_TRADE_ROW_HEIGHT - 1) / MERCHANT_TRADE_ROW_HEIGHT);
+        int visibleRows = Math.max(1, (guiMerchant.ySize - 16) / MERCHANT_TRADE_ROW_HEIGHT);
         int firstRow = clampMerchantTradeScroll(guiMerchant, scrollRow);
-        int lastRow = Math.min(rows, firstRow + visibleRows);
+        int lastRow = Math.min(merchantRecipeList.size(), firstRow + visibleRows);
         RenderItem renderItem = Minecraft.getMinecraft().getRenderItem();
         FontRenderer fontRenderer = Minecraft.getMinecraft().fontRendererObj;
         ItemStack hoveredStack = null;
@@ -149,49 +126,43 @@ public final class RPGUIUtility {
         GlStateManager.disableDepth();
         RenderUtils.scissorPushGui(guiMerchant.guiLeft + 182, guiMerchant.guiTop + 9,
             guiMerchant.xSize - 186, guiMerchant.ySize - 15);
-        for (int column = 0; column < columns; column++) {
-            for (int row = firstRow; row < lastRow; row++) {
-                int index = column * rows + row;
-                if (index >= merchantRecipeList.size()) {
-                    continue;
-                }
-                MerchantRecipe merchantRecipe = merchantRecipeList.get(index);
-                int left = guiMerchant.guiLeft + 184 + column * MERCHANT_TRADE_COLUMN_WIDTH;
-                int top = guiMerchant.guiTop + 10 + (row - firstRow) * MERCHANT_TRADE_ROW_HEIGHT;
-                boolean hovered = mouseX >= left - 2 && mouseX < left + 56 && mouseY >= top - 1 && mouseY < top + 18;
-                if (index == selectedMerchantRecipe) {
-                    Gui.drawRect(left - 2, top - 1, left + 56, top + 18, 0x886B8ED6);
-                } else if (hovered) {
-                    Gui.drawRect(left - 2, top - 1, left + 56, top + 18, 0x443F3F42);
-                }
-                if (merchantRecipe.isRecipeDisabled()) {
-                    Gui.drawRect(left - 2, top - 1, left + 56, top + 18, 0x663F3F42);
-                }
+        for (int index = firstRow; index < lastRow; index++) {
+            MerchantRecipe merchantRecipe = merchantRecipeList.get(index);
+            int left = guiMerchant.guiLeft + 184;
+            int top = guiMerchant.guiTop + 10 + (index - firstRow) * MERCHANT_TRADE_ROW_HEIGHT;
+            boolean hovered = mouseX >= left - 2 && mouseX < left + 56 && mouseY >= top - 1 && mouseY < top + 18;
+            if (index == selectedMerchantRecipe) {
+                Gui.drawRect(left - 2, top - 1, left + 56, top + 18, 0x886B8ED6);
+            } else if (hovered) {
+                Gui.drawRect(left - 2, top - 1, left + 56, top + 18, 0x443F3F42);
+            }
+            if (merchantRecipe.isRecipeDisabled()) {
+                Gui.drawRect(left - 2, top - 1, left + 56, top + 18, 0x663F3F42);
+            }
 
-                ItemStack itemToBuy = merchantRecipe.getItemToBuy();
-                ItemStack secondItemToBuy = merchantRecipe.getSecondItemToBuy();
-                ItemStack itemToSell = merchantRecipe.getItemToSell();
-                if (itemToBuy != null) {
-                    renderItem.renderItemAndEffectIntoGUI(itemToBuy, left + 1, top + 1);
-                    renderItem.renderItemOverlays(fontRenderer, itemToBuy, left + 1, top + 1);
-                }
-                if (secondItemToBuy != null) {
-                    renderItem.renderItemAndEffectIntoGUI(secondItemToBuy, left + 20, top + 1);
-                    renderItem.renderItemOverlays(fontRenderer, secondItemToBuy, left + 20, top + 1);
-                }
-                if (itemToSell != null) {
-                    renderItem.renderItemAndEffectIntoGUI(itemToSell, left + 39, top + 1);
-                    renderItem.renderItemOverlays(fontRenderer, itemToSell, left + 39, top + 1);
-                }
-                if (hovered) {
-                    int itemOffset = mouseX - left;
-                    if (itemOffset < 18) {
-                        hoveredStack = itemToBuy;
-                    } else if (itemOffset < 37) {
-                        hoveredStack = secondItemToBuy;
-                    } else {
-                        hoveredStack = itemToSell;
-                    }
+            ItemStack itemToBuy = merchantRecipe.getItemToBuy();
+            ItemStack secondItemToBuy = merchantRecipe.getSecondItemToBuy();
+            ItemStack itemToSell = merchantRecipe.getItemToSell();
+            if (itemToBuy != null) {
+                renderItem.renderItemAndEffectIntoGUI(itemToBuy, left + 1, top + 1);
+                renderItem.renderItemOverlays(fontRenderer, itemToBuy, left + 1, top + 1);
+            }
+            if (secondItemToBuy != null) {
+                renderItem.renderItemAndEffectIntoGUI(secondItemToBuy, left + 20, top + 1);
+                renderItem.renderItemOverlays(fontRenderer, secondItemToBuy, left + 20, top + 1);
+            }
+            if (itemToSell != null) {
+                renderItem.renderItemAndEffectIntoGUI(itemToSell, left + 39, top + 1);
+                renderItem.renderItemOverlays(fontRenderer, itemToSell, left + 39, top + 1);
+            }
+            if (hovered) {
+                int itemOffset = mouseX - left;
+                if (itemOffset < 18) {
+                    hoveredStack = itemToBuy;
+                } else if (itemOffset < 37) {
+                    hoveredStack = secondItemToBuy;
+                } else {
+                    hoveredStack = itemToSell;
                 }
             }
         }
@@ -207,24 +178,41 @@ public final class RPGUIUtility {
             return -1;
         }
 
-        int columns = Math.max(1, (merchantRecipeList.size() + MERCHANT_TRADE_MAX_ROWS - 1) / MERCHANT_TRADE_MAX_ROWS);
-        int maxColumns = Math.max(1, (guiMerchant.width - 192) / MERCHANT_TRADE_COLUMN_WIDTH);
-        columns = Math.min(columns, maxColumns);
-        int rows = (merchantRecipeList.size() + columns - 1) / columns;
-        int relativeX = mouseX - guiMerchant.guiLeft - 182;
+        int relativeX = mouseX - guiMerchant.guiLeft - MERCHANT_TRADE_LIST_LEFT;
         int relativeY = mouseY - guiMerchant.guiTop - 9;
-        int visibleRows = Math.max(1, (guiMerchant.ySize - 16 + MERCHANT_TRADE_ROW_HEIGHT - 1) / MERCHANT_TRADE_ROW_HEIGHT);
-        if (relativeX < 0 || relativeY < 0 || relativeX >= columns * MERCHANT_TRADE_COLUMN_WIDTH
+        int visibleRows = Math.max(1, (guiMerchant.ySize - 16) / MERCHANT_TRADE_ROW_HEIGHT);
+        if (relativeX < 0 || relativeY < 0 || relativeX >= guiMerchant.xSize - MERCHANT_TRADE_LIST_LEFT - 4
             || relativeY >= visibleRows * MERCHANT_TRADE_ROW_HEIGHT) {
             return -1;
         }
-        int column = relativeX / MERCHANT_TRADE_COLUMN_WIDTH;
         int row = relativeY / MERCHANT_TRADE_ROW_HEIGHT + clampMerchantTradeScroll(guiMerchant, scrollRow);
-        if (column >= columns || row >= rows) {
+        if (row >= merchantRecipeList.size()) {
             return -1;
         }
-        int index = column * rows + row;
-        return index < merchantRecipeList.size() ? index : -1;
+        return row;
+    }
+
+    public static void selectMerchantTradeByOffset(GuiMerchant guiMerchant, int offset) {
+        MerchantRecipeList merchantRecipeList = guiMerchant.getMerchant().getRecipes(Minecraft.getMinecraft().thePlayer);
+        if (merchantRecipeList == null || merchantRecipeList.isEmpty() || !(guiMerchant instanceof IMerchantGui)) {
+            return;
+        }
+
+        int selectedMerchantRecipe = Math.max(0, Math.min(guiMerchant.selectedMerchantRecipe, merchantRecipeList.size() - 1));
+        int nextMerchantRecipe = Math.max(0, Math.min(merchantRecipeList.size() - 1, selectedMerchantRecipe + offset));
+        if (nextMerchantRecipe != guiMerchant.selectedMerchantRecipe) {
+            selectAndFillMerchantTrade(guiMerchant, nextMerchantRecipe, false);
+        }
+
+        IMerchantGui merchantGui = (IMerchantGui) guiMerchant;
+        int scrollRow = clampMerchantTradeScroll(guiMerchant, merchantGui.raven$getMerchantScrollRow());
+        int visibleRows = Math.max(1, (guiMerchant.ySize - 16) / MERCHANT_TRADE_ROW_HEIGHT);
+        if (nextMerchantRecipe < scrollRow) {
+            scrollRow = nextMerchantRecipe;
+        } else if (nextMerchantRecipe >= scrollRow + visibleRows) {
+            scrollRow = nextMerchantRecipe - visibleRows + 1;
+        }
+        merchantGui.raven$setMerchantScrollRow(clampMerchantTradeScroll(guiMerchant, scrollRow));
     }
 
     public static void selectAndFillMerchantTrade(GuiMerchant guiMerchant, int selectedMerchantRecipe, boolean completeTrade) {

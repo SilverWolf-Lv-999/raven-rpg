@@ -43,6 +43,14 @@ public abstract class MixinGuiScreen {
 
         if (event.isCanceled()) {
             callbackInfo.cancel();
+            return;
+        }
+
+        if (Keyboard.getEventKeyState() && RPGUI.shouldStyleMerchant() && (Object) this instanceof GuiMerchant
+            && (Keyboard.getEventKey() == Keyboard.KEY_UP || Keyboard.getEventKey() == Keyboard.KEY_DOWN)) {
+            RPGUIUtility.selectMerchantTradeByOffset((GuiMerchant) (Object) this,
+                Keyboard.getEventKey() == Keyboard.KEY_UP ? -1 : 1);
+            callbackInfo.cancel();
         }
     }
 
@@ -65,10 +73,8 @@ public abstract class MixinGuiScreen {
             return;
         }
 
-        IMerchantGui merchantGui = (IMerchantGui) (Object) this;
         int rowDelta = Math.max(1, Math.abs(wheelInput) / 120);
-        merchantGui.raven$setMerchantScrollRow(RPGUIUtility.clampMerchantTradeScroll(guiMerchant,
-            merchantGui.raven$getMerchantScrollRow() + (wheelInput > 0 ? -rowDelta : rowDelta)));
+        RPGUIUtility.selectMerchantTradeByOffset(guiMerchant, wheelInput > 0 ? -rowDelta : rowDelta);
         callbackInfo.cancel();
     }
 }
