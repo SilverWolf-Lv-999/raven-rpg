@@ -4,6 +4,7 @@ import keystrokesmod.mixin.impl.accessor.IAccessorPlayerControllerMP;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
+import keystrokesmod.utility.PacketUtils;
 import keystrokesmod.utility.Utils;
 import keystrokesmod.utility.rpg.RPGMoney;
 import keystrokesmod.utility.rpg.RPGUtility;
@@ -14,6 +15,8 @@ import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.play.client.C0BPacketEntityAction;
+import net.minecraft.network.play.client.C0DPacketCloseWindow;
+import net.minecraft.network.play.client.C16PacketClientStatus;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntitySign;
 import net.minecraft.util.BlockPos;
@@ -55,6 +58,7 @@ public class AutoShell extends Module {
         this.registerSetting(delay);
         this.registerSetting(item);
         this.registerSetting(money);
+        this.registerSetting(forceSync);
         this.registerSetting(silentMode);
     }
 
@@ -357,6 +361,12 @@ public class AutoShell extends Module {
         }
 
         closeMoneyContainer();
+        if (forceSync.isToggled()) {
+            PacketUtils.sendPacketNoEvent(new C0DPacketCloseWindow());
+            PacketUtils.sendPacketNoEvent(new C16PacketClientStatus(
+                    C16PacketClientStatus.EnumState.OPEN_INVENTORY_ACHIEVEMENT
+            ));
+        }
         saleMoney = null;
         saleSign = null;
         saleBeforeCount = 0;
