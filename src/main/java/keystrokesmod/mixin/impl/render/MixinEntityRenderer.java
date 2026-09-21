@@ -1,7 +1,6 @@
 package keystrokesmod.mixin.impl.render;
 
 import keystrokesmod.event.PostMouseSelectionEvent;
-import keystrokesmod.helper.RotationHelper;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.render.Freelook;
 import keystrokesmod.mixin.interfaces.ISaturationRenderer;
@@ -161,24 +160,6 @@ public class MixinEntityRenderer implements ISaturationRenderer {
         MinecraftForge.EVENT_BUS.post(new PostMouseSelectionEvent());
     }
 
-    @Inject(method = "getMouseOver", at = @At("HEAD"))
-    private void onGetMouseOverHead(float partialTicks, CallbackInfo ci) {
-        RotationHelper rh = RotationHelper.get();
-        if (rh.swappedForMouseOver) {
-            return;
-        }
-        Minecraft mc = Minecraft.getMinecraft();
-        Entity view = mc.getRenderViewEntity();
-        if (view != null && rh.isActive()) {
-            Float yaw = rh.getServerYaw();
-            Float pitch = rh.getServerPitch();
-            if (yaw != null && !yaw.isNaN() && pitch != null && !pitch.isNaN()) {
-                rh.beginSwap(view, yaw, pitch, true);
-                rh.swappedForMouseOver = true;
-            }
-        }
-    }
-
     @Inject(method = "getMouseOver", at = @At(value = "INVOKE", target = "Lnet/minecraft/profiler/Profiler;endSection()V", shift = At.Shift.BEFORE))
     private void onGetMouseOverBeforeEndSection(float partialTicks, CallbackInfo ci) {
         if (ModuleManager.bedAura != null && ModuleManager.bedAura.shouldOverrideMouseOver()) {
@@ -198,15 +179,4 @@ public class MixinEntityRenderer implements ISaturationRenderer {
         }
     }
 
-    @Inject(method = "getMouseOver", at = @At("RETURN"))
-    private void onGetMouseOverReturn(float partialTicks, CallbackInfo ci) {
-        RotationHelper rh = RotationHelper.get();
-        if (rh.swappedForMouseOver) {
-            Entity view = Minecraft.getMinecraft().getRenderViewEntity();
-            if (view != null) {
-                rh.endSwap(view);
-            }
-            rh.swappedForMouseOver = false;
-        }
-    }
 }

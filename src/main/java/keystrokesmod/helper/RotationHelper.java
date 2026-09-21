@@ -26,11 +26,6 @@ public class RotationHelper {
     public boolean forceMovementFix = false;
     private boolean serverRelativeMovementInputs = false;
 
-    // Tick-scoped swap state for temporarily overriding entity rotations
-    private float savedYaw, savedPitch;
-    private float savedPrevYaw, savedPrevPitch;
-    public boolean swappedForMouseOver;
-
     private boolean rotationsUpdatedThisTick = false;
 
     private boolean needsArmYawUpdate = false;
@@ -145,13 +140,6 @@ public class RotationHelper {
         return RotationUtils.smoothRotation(baseYaw, basePitch, rot[0], rot[1], speed, randomizationPercent);
     }
 
-    /**
-     * Gathers server rotations via ClientRotationEvent once per tick.
-     * Called early in runTick (before getMouseOver) so that objectMouseOver
-     * uses server rotations, and also as a fallback from onPreUpdate.
-     * Guard uses rotationsUpdatedThisTick (reset at GameTickEvent) because
-     * ticksExisted only increments during updateEntities, which runs after getMouseOver.
-     */
     public void updateServerRotations() {
         if (mc.thePlayer == null) {
             return;
@@ -216,17 +204,10 @@ public class RotationHelper {
 
     @SubscribeEvent
     public void onRunTick(GameTickEvent e) {
-        if (this.setRotations && this.serverYaw != null && mc.thePlayer != null) {
-            float serverYawVal = RotationUtils.serverRotations[0];
-            float unwrapped = unwrapYaw(MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw), serverYawVal);
-            mc.thePlayer.rotationYaw = unwrapped;
-            mc.thePlayer.prevRotationYaw = unwrapped;
-        }
         this.serverYaw = this.serverPitch = null;
         this.setRotations = this.forceMovementFix = false;
         this.serverRelativeMovementInputs = false;
         this.rotationsUpdatedThisTick = false;
-        this.swappedForMouseOver = false;
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -239,36 +220,6 @@ public class RotationHelper {
 
     public boolean isActive() {
         return this.setRotations && (this.serverYaw != null || this.serverPitch != null);
-    }
-
-    /**
-     * Temporarily overrides an entity's rotation fields for raytrace or movement math.
-     * Saves all four fields so endSwap can fully restore them.
-     * Sets prev = current to prevent interpolation artifacts in getLook(partialTicks).
-     */
-    public void beginSwap(Entity e, float yaw, float pitch, boolean swapPitch) {
-        this.savedYaw = e.rotationYaw;
-        this.savedPrevYaw = e.prevRotationYaw;
-        this.savedPitch = e.rotationPitch;
-        this.savedPrevPitch = e.prevRotationPitch;
-
-        e.rotationYaw = yaw;
-        e.prevRotationYaw = yaw;
-
-        if (swapPitch) {
-            e.rotationPitch = pitch;
-            e.prevRotationPitch = pitch;
-        }
-    }
-
-    /**
-     * Restores the entity's rotation fields saved by beginSwap.
-     */
-    public void endSwap(Entity e) {
-        e.rotationYaw = this.savedYaw;
-        e.prevRotationYaw = this.savedPrevYaw;
-        e.rotationPitch = this.savedPitch;
-        e.prevRotationPitch = this.savedPrevPitch;
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)

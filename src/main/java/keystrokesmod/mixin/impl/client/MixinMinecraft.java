@@ -2,7 +2,6 @@ package keystrokesmod.mixin.impl.client;
 
 import keystrokesmod.event.*;
 import net.minecraft.util.MovingObjectPosition;
-import keystrokesmod.helper.RotationHelper;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.player.BedAura;
 import keystrokesmod.module.impl.render.Freelook;
@@ -23,11 +22,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Minecraft.class)
 public class MixinMinecraft {
-
-    @Inject(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;getMouseOver(F)V", shift = At.Shift.BEFORE))
-    public void onBeforeGetMouseOver(CallbackInfo ci) {
-        RotationHelper.get().updateServerRotations();
-    }
 
     @Inject(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;getMouseOver(F)V", shift = At.Shift.AFTER))
     public void onRunTickMouseOver(CallbackInfo ci) {
