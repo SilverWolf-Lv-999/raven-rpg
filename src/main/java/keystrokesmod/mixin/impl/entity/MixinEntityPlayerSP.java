@@ -256,6 +256,10 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
         return message;
     }
 
+    /**
+     * @author
+     * @reason
+     */
     @Overwrite
     public void onLivingUpdate() {
         if (this.sprintingTicksLeft > 0) {
@@ -347,9 +351,7 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
         }
 
         Sprint sprintMod = ModuleManager.sprint;
-        if (!this.isSprinting() && sprintMod != null && sprintMod.isEnabled()
-                && (this.movementInput.moveForward != 0 || this.movementInput.moveStrafe != 0)
-                && !this.mc.gameSettings.keyBindSneak.isKeyDown() && !this.isPotionActive(Potion.blindness)) {
+        if (!this.isSprinting() && sprintMod != null && sprintMod.isEnabled() && (this.movementInput.moveForward != 0 || this.movementInput.moveStrafe != 0)) {
             boolean force = false;
             if (sprintMod.allowWhileBackwards() && this.movementInput.moveForward < 0) force = true;
             if (sprintMod.allowWhileSideways() && this.movementInput.moveForward == 0 && this.movementInput.moveStrafe != 0) force = true;

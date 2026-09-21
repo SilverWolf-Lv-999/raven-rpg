@@ -4,8 +4,6 @@ import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.DescriptionSetting;
 import keystrokesmod.utility.Utils;
-import net.minecraft.client.gui.inventory.GuiChest;
-import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.client.settings.KeyBinding;
 
 public class Sprint extends Module {
@@ -35,11 +33,6 @@ public class Sprint extends Module {
     @Override
     public void onUpdate() {
         if (!Utils.nullCheck()) {
-            return;
-        }
-        boolean inGame = mc.inGameHasFocus;
-        boolean inInv = allowInInventory.isToggled() && (mc.currentScreen instanceof GuiInventory || mc.currentScreen instanceof GuiChest);
-        if (!inGame && !inInv) {
             return;
         }
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindSprint.getKeyCode(), true);
