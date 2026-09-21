@@ -553,12 +553,20 @@ public class Utils implements IMinecraftInstance {
         return entity.getHealth() + entity.getAbsorptionAmount();
     }
 
+    public static double getHealthPercent(EntityLivingBase entity) {
+        float maxHealth = entity.getMaxHealth();
+        if (maxHealth <= 0.0f) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(1.0, entity.getHealth() / maxHealth));
+    }
+
     public static String getHealthStr(EntityLivingBase entity, boolean accountDead) {
         float totalHealth = getTotalHealth(entity);
         if (accountDead && entity.isDead) {
             totalHealth = 0;
         }
-        return getColorForHealth(entity.getHealth() / entity.getMaxHealth(), totalHealth);
+        return getColorForHealth(getHealthPercent(entity), totalHealth);
     }
 
     public static boolean isBindDown(KeyBinding keyBinding) {

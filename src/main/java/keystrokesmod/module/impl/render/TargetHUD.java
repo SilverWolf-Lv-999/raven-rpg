@@ -83,7 +83,7 @@ public class TargetHUD extends Module {
                 return;
             }
             String playerInfo = target.getDisplayName().getFormattedText();
-            double health = target.getHealth() / target.getMaxHealth();
+            double health = Utils.getHealthPercent(target);
             if (target.isDead) {
                 health = 0;
             }
@@ -146,11 +146,10 @@ public class TargetHUD extends Module {
             final int n14 = n8 - 6;
             final int n15 = n9;
 
-            // Bar background
             RenderUtils.drawRoundedRectangle((float) n13, (float) n15, (float) n14, (float) (n15 + 5), 4.0f, Utils.mergeAlpha(Color.black.getRGB(), maxAlphaOutline));
             int mergedGradientLeft = Utils.mergeAlpha(gradientColors[0], maxAlphaBackground);
             int mergedGradientRight = Utils.mergeAlpha(gradientColors[1], maxAlphaBackground);
-            float healthBar = (float) (int) (n14 + (n13 - n14) * (1 - health));
+            float healthBar = n14 + (n13 - n14) * (float) (1.0 - health);
             boolean smoothBack = false;
             if (healthBar != lastHealthBar && lastHealthBar - n13 >= 3 && healthBarTimer != null ) {
                 int type = mode.getInput() == 0 ? 4 : 1;
@@ -169,11 +168,9 @@ public class TargetHUD extends Module {
             if (healthColor.isToggled()) {
                 mergedGradientLeft = mergedGradientRight = Utils.mergeAlpha(Utils.getColorForHealth(health), maxAlphaBackground);
             }
-            if (lastHealthBar > n14) { // exceeds total width then clamp
-                lastHealthBar = n14;
-            }
+            lastHealthBar = Math.max(n13, Math.min(n14, lastHealthBar));
 
-            switch ((int) mode.getInput()) { // health bar
+            switch ((int) mode.getInput()) {
                 case 0:
                     RenderUtils.drawRoundedRectangle((float) n13, (float) n15, lastHealthBar, (float) (n15 + 5), 4.0f, Utils.darkenColor(mergedGradientRight, 25));
                     RenderUtils.drawRoundedGradientRect((float) n13, (float) n15, smoothBack ? lastHealthBar : healthBar, (float) (n15 + 5), 4.0f, mergedGradientLeft, mergedGradientLeft, mergedGradientRight, mergedGradientRight);
@@ -229,7 +226,7 @@ public class TargetHUD extends Module {
             int miX = this.aX;
             int miY = this.aY;
             String playerInfo = mc.thePlayer.getDisplayName().getFormattedText();
-            double health = mc.thePlayer.getHealth() / mc.thePlayer.getMaxHealth();
+            double health = Utils.getHealthPercent(mc.thePlayer);
             if (mc.thePlayer.isDead) {
                 health = 0;
             }

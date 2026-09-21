@@ -33,6 +33,7 @@ public class AutoShell extends Module {
     public final SliderSetting delay = new SliderSetting("send cmd delay", 0.0, 0.0, 20.0, 1.0);
     public final ButtonSetting item = new ButtonSetting("item", true);
     public final ButtonSetting money = new ButtonSetting("money", false);
+    public final ButtonSetting forceSync = new ButtonSetting("force Sync", false);
     public final ButtonSetting silentMode = new ButtonSetting("silent", false);
 
     private MoneyState moneyState = MoneyState.IDLE;
