@@ -1,6 +1,6 @@
 package keystrokesmod.module.impl.player;
 
-import keystrokesmod.event.ClientRotationEvent;
+import keystrokesmod.event.PreMotionEvent;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
@@ -41,12 +41,11 @@ public class Derp extends Module {
     }
 
     @SubscribeEvent
-    public void onClientRotation(ClientRotationEvent event) {
+    public void onPreMotion(PreMotionEvent event) {
         if (!this.silent.isToggled()) {
             return;
         }
         this.yaw = RotationUtils.applyVanilla((float) (this.yaw + this.rotationSpeed.getInput()));
-        event.setYaw(this.yaw);
-        event.setPitch(RotationUtils.clampPitch((float) this.pitch.getInput()));
+        event.setRotations(this.yaw, RotationUtils.clampPitch((float) this.pitch.getInput()));
     }
 }
