@@ -184,6 +184,7 @@ public class ModuleManager {
         this.addModule(new AutoBack());
         this.addModule(new BridgeAssist());
         this.addModule(new Clutch());
+        this.addModule(new Derp());
         this.addModule(autoTool = new AutoTool());
         this.addModule(bedAura = new BedAura());
         this.addModule(blink = new Blink());

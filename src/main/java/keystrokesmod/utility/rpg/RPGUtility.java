@@ -19,10 +19,6 @@ import java.util.Map;
 import java.util.Set;
 
 public final class RPGUtility {
-    public static final String[] MONEY_NAME = {
-            "铜币","银", "金", "钻", "绿宝石", "蓝宝石", "极品宝石"
-    };
-
     public static final Set<RPGMoney> RPG_MONEYS;
     private static final Set<String> TRADING_MARKET_VILLAGER_NAMES = new HashSet<>(Arrays.asList("VIP", "超级VIP", "至尊VIP"));
     private static final Map<String, Vec3> TRADING_MARKET_VILLAGER_CACHE = new HashMap<>();
