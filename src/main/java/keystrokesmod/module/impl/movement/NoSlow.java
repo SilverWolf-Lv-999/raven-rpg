@@ -1,6 +1,7 @@
 package keystrokesmod.module.impl.movement;
 
 import keystrokesmod.event.PostPlayerInputEvent;
+import keystrokesmod.event.PrePlayerInputEvent;
 import keystrokesmod.event.PreUpdateEvent;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
@@ -25,6 +26,7 @@ public class NoSlow extends Module {
     public static ButtonSetting disablePotions;
     public static ButtonSetting swordOnly;
     public static ButtonSetting vanillaSword;
+    public static ButtonSetting sneak;
 
     private final String[] NOSLOW_MODES = new String[] { "Vanilla", "Beta" };
 
@@ -40,6 +42,7 @@ public class NoSlow extends Module {
         this.registerSetting(disablePotions = new ButtonSetting("Disable potions", false));
         this.registerSetting(swordOnly = new ButtonSetting("Sword only", false));
         this.registerSetting(vanillaSword = new ButtonSetting("Vanilla sword", false));
+        this.registerSetting(sneak = new ButtonSetting("Sneak", false));
     }
 
     @Override
@@ -70,6 +73,13 @@ public class NoSlow extends Module {
         if (setJump) {
             mc.thePlayer.movementInput.jump = true;
             setJump = false;
+        }
+    }
+
+    @SubscribeEvent
+    public void onPrePlayerInput(PrePlayerInputEvent e) {
+        if (sneak.isToggled()) {
+            e.setSneakSlowDownMultiplier(1.0D);
         }
     }
 

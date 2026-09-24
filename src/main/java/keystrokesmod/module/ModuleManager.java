@@ -68,6 +68,7 @@ public class ModuleManager {
     public static AntiDebuff antiDebuff;
     public static TargetHUD targetHUD;
     public static NoFall noFall;
+    public static KeepSneak keepSneak;
     public static PlayerESP playerESP;
     public static MobESP mobESP;
     public static Reduce reduce;
@@ -198,6 +199,7 @@ public class ModuleManager {
         this.addModule(hideWindow = new HideWindow());
         this.addModule(invManager = new InvManager());
         this.addModule(noFall = new NoFall());
+        this.addModule(keepSneak = new KeepSneak());
         this.addModule(noInteractionLimit = new NoInteractionLimit());
         this.addModule(noRotate = new NoRotate());
         this.addModule(new Regen());
