@@ -32,6 +32,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import static keystrokesmod.utility.RotationUtils.setRenderYaw;
+
 @Mixin(EntityPlayerSP.class)
 public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
     @Shadow
@@ -145,6 +147,10 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
         }
     }
 
+    /**
+     * @author
+     * @reason
+     */
     @Overwrite
     public void onUpdateWalkingPlayer() {
         PreMotionEvent.setRotations = false;
@@ -194,7 +200,7 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
 
         if (this.isCurrentViewEntity()) {
             if (PreMotionEvent.setRenderYaw()) {
-                RotationUtils.setRenderYaw(preMotionEvent.getYaw());
+                setRenderYaw(preMotionEvent.getYaw());
             }
 
             RotationUtils.renderPitch = preMotionEvent.getPitch();
@@ -203,7 +209,7 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
             if (RotationUtils.setFakeRotations) {
                 RotationUtils.renderPitch = RotationUtils.fakeRotations[1];
                 RotationUtils.renderYaw = RotationUtils.fakeRotations[0];
-                RotationUtils.setRenderYaw(RotationUtils.renderYaw);
+                setRenderYaw(RotationUtils.renderYaw);
             }
             RotationUtils.setFakeRotations = false;
 
@@ -257,8 +263,8 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
     }
 
     /**
-     * @author
-     * @reason
+     * @author Administrator
+     * @reason a
      */
     @Overwrite
     public void onLivingUpdate() {
@@ -378,11 +384,11 @@ public abstract class MixinEntityPlayerSP extends AbstractClientPlayer {
 
         if (this.capabilities.isFlying && this.isCurrentViewEntity()) {
             if (this.movementInput.sneak) {
-                this.motionY -= (double) (this.capabilities.getFlySpeed() * 3.0F);
+                this.motionY -= this.capabilities.getFlySpeed() * 3.0F;
             }
 
             if (this.movementInput.jump) {
-                this.motionY += (double) (this.capabilities.getFlySpeed() * 3.0F);
+                this.motionY += this.capabilities.getFlySpeed() * 3.0F;
             }
         }
 

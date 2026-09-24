@@ -1,5 +1,6 @@
 package keystrokesmod.module;
 
+import keystrokesmod.module.impl.client.AntiPacket;
 import keystrokesmod.module.impl.client.ChatCommands;
 import keystrokesmod.module.impl.client.CommandLine;
 import keystrokesmod.module.impl.client.Gui;
@@ -99,6 +100,7 @@ public class ModuleManager {
     public static Disabler disabler;
 
     public void register() {
+        this.addModule(new AntiPacket());
         this.addModule(chatCommands = new ChatCommands());
         this.addModule(commandLine = new CommandLine());
         this.addModule(new Gui());
