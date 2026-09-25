@@ -56,7 +56,7 @@ public class Derp extends Module {
         event.setPitch(RotationUtils.clampPitch((float) this.pitch.getInput()));
     }
 
-    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onSendPacket(SendPacketEvent event) {
         if (!this.serverMode.isToggled() || !(event.getPacket() instanceof C03PacketPlayer)) {
             return;
