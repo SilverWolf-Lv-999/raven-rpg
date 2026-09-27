@@ -1,13 +1,11 @@
-package keystrokesmod.clickgui.components.impl;
+package keystrokesmod.ui.clickgui.components.impl;
 
 import keystrokesmod.Raven;
-import keystrokesmod.clickgui.components.Component;
+import keystrokesmod.ui.clickgui.components.Component;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.client.Gui;
 import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.utility.font.RavenFontRenderer;
-import keystrokesmod.utility.profile.ProfileModule;
-import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL11;
 
 import java.awt.*;

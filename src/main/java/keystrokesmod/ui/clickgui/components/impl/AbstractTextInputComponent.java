@@ -1,7 +1,7 @@
-package keystrokesmod.clickgui.components.impl;
+package keystrokesmod.ui.clickgui.components.impl;
 
-import keystrokesmod.clickgui.components.Component;
-import keystrokesmod.clickgui.components.FocusableTextComponent;
+import keystrokesmod.ui.clickgui.components.Component;
+import keystrokesmod.ui.clickgui.components.FocusableTextComponent;
 import keystrokesmod.utility.Theme;
 import keystrokesmod.utility.font.RavenFontRenderer;
 import org.lwjgl.opengl.GL11;

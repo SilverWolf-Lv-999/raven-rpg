@@ -87,6 +87,7 @@ public class ModuleManager {
     public static AutoTool autoTool;
     public static AutoSwap autoSwap;
     public static AutoShell autoShell;
+    public static VillagerTrade villagerTrade;
     public static Sprint sprint;
     public static Weather weather;
     public static ChatCommands chatCommands;
@@ -183,6 +184,7 @@ public class ModuleManager {
         this.addModule(new AutoJump());
         this.addModule(autoSwap = new AutoSwap());
         this.addModule(autoShell = new AutoShell());
+        this.addModule(villagerTrade = new VillagerTrade());
         this.addModule(new AutoCD());
         this.addModule(new AutoBack());
         this.addModule(new BridgeAssist());

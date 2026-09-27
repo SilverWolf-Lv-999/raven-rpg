@@ -1,11 +1,11 @@
-package keystrokesmod.clickgui;
+package keystrokesmod.ui.clickgui;
 
 import keystrokesmod.Raven;
-import keystrokesmod.clickgui.components.Component;
-import keystrokesmod.clickgui.components.FocusableTextComponent;
-import keystrokesmod.clickgui.components.impl.BindComponent;
-import keystrokesmod.clickgui.components.impl.CategoryComponent;
-import keystrokesmod.clickgui.components.impl.ModuleComponent;
+import keystrokesmod.ui.clickgui.components.Component;
+import keystrokesmod.ui.clickgui.components.FocusableTextComponent;
+import keystrokesmod.ui.clickgui.components.impl.BindComponent;
+import keystrokesmod.ui.clickgui.components.impl.CategoryComponent;
+import keystrokesmod.ui.clickgui.components.impl.ModuleComponent;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.impl.client.CommandLine;
 import keystrokesmod.module.impl.client.Gui;

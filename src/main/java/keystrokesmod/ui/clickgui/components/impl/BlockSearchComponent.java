@@ -1,4 +1,4 @@
-package keystrokesmod.clickgui.components.impl;
+package keystrokesmod.ui.clickgui.components.impl;
 
 import keystrokesmod.module.setting.impl.BlockListSetting;
 import keystrokesmod.utility.BlockSearchIndex;

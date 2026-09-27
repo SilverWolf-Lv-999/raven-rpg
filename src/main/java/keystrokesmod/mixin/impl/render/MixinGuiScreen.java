@@ -4,10 +4,12 @@ import keystrokesmod.Raven;
 import keystrokesmod.event.KeyPressEvent;
 import keystrokesmod.mixin.interfaces.IMerchantGui;
 import keystrokesmod.module.impl.client.RPGUI;
+import keystrokesmod.ui.trade.TradeManager;
 import keystrokesmod.utility.RPGUIUtility;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiMerchant;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.village.MerchantRecipeList;
 import net.minecraftforge.common.MinecraftForge;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.input.Mouse;
@@ -51,6 +53,21 @@ public abstract class MixinGuiScreen {
             RPGUIUtility.selectMerchantTradeByOffset((GuiMerchant) (Object) this,
                 Keyboard.getEventKey() == Keyboard.KEY_UP ? -1 : 1);
             callbackInfo.cancel();
+            return;
+        }
+
+        if (Keyboard.getEventKeyState() && GuiScreen.isShiftKeyDown()
+            && RPGUI.shouldStyleMerchant() && (Object) this instanceof GuiMerchant
+            && (Keyboard.getEventKey() == Keyboard.KEY_ADD
+            || Keyboard.getEventCharacter() == '+'
+            || Keyboard.getEventKey() == Keyboard.KEY_EQUALS)) {
+            GuiMerchant guiMerchant = (GuiMerchant) (Object) this;
+            MerchantRecipeList merchantRecipeList = guiMerchant.getMerchant().getRecipes(Minecraft.getMinecraft().thePlayer);
+            if (merchantRecipeList != null && guiMerchant.selectedMerchantRecipe >= 0
+                && guiMerchant.selectedMerchantRecipe < merchantRecipeList.size()) {
+                TradeManager.add(merchantRecipeList.get(guiMerchant.selectedMerchantRecipe));
+                callbackInfo.cancel();
+            }
         }
     }
 
