@@ -44,22 +44,25 @@ public class VillagerTrade extends Module {
     private GuiMerchant merchantGui;
     private TradeEntry activeTrade;
     private ItemStack pendingSoulStack;
-    private ItemStack soulOpenerStack;
     private int pendingSoulAmount;
     private int interactionDelay;
     private int actionTicks;
     private int actionWindowId = -1;
     private int actionBeforeCount;
     private int soulBeforeCount;
+    private int soulStateTicks;
     private Container soulContainer;
     private int soulWindowId = -1;
     private SoulState soulState = SoulState.IDLE;
-    private boolean soulCloseSent;
+    private boolean soulGuiSignal;
     private boolean waitingTradeRefresh;
     private boolean waitingMerchantOpen;
     private int merchantOpenTicks;
     private final Set<Integer> rejectedEntityIds = new HashSet<>();
+    private final Set<BlockPos> rejectedSignPositions = new HashSet<>();
     private int activeEntityId = -1;
+    private BlockPos activeSignPosition;
+    private int idleTicks;
 
     public VillagerTrade() {
         super("Village Trade", category.world);
@@ -88,7 +91,9 @@ public class VillagerTrade extends Module {
             this.clearState();
             return;
         }
-        if (this.soulState == SoulState.IDLE && this.isSoulContainer(mc.thePlayer.openContainer)) {
+        if (getOnSoulSpace.isToggled()
+                && this.soulState == SoulState.IDLE
+                && this.isSoulContainer(mc.thePlayer.openContainer)) {
             ItemStack manualSoulStack = this.findManualSoulStack(mc.thePlayer.openContainer);
             if (manualSoulStack != null) {
                 this.beginSoulExtraction(manualSoulStack);
@@ -112,7 +117,11 @@ public class VillagerTrade extends Module {
                 if (this.activeEntityId >= 0) {
                     this.rejectedEntityIds.add(this.activeEntityId);
                 }
+                if (this.activeSignPosition != null) {
+                    this.rejectedSignPositions.add(this.activeSignPosition);
+                }
                 this.activeEntityId = -1;
+                this.activeSignPosition = null;
                 this.waitingMerchantOpen = false;
                 this.merchantOpenTicks = 0;
             }
@@ -139,10 +148,16 @@ public class VillagerTrade extends Module {
             }
             return;
         }
-        if (this.soulState != SoulState.IDLE && event.gui instanceof GuiContainer && !(event.gui instanceof GuiInventory)) {
-            GuiContainer guiContainer = (GuiContainer) event.gui;
-            mc.thePlayer.openContainer = guiContainer.inventorySlots;
-            event.setCanceled(true);
+        if (this.soulState != SoulState.IDLE
+                && event.gui instanceof GuiContainer
+                && !(event.gui instanceof GuiInventory)) {
+            Container container = ((GuiContainer) event.gui).inventorySlots;
+            mc.thePlayer.openContainer = container;
+            if (this.isSoulContainer(container)
+                    && (this.soulState == SoulState.WAITING_OPEN
+                    || this.soulState == SoulState.WAITING_REFRESH)) {
+                this.soulGuiSignal = true;
+            }
         }
     }
 
@@ -210,47 +225,49 @@ public class VillagerTrade extends Module {
     }
 
     private void handleSoulSpace() {
+        if (++this.soulStateTicks > 200) {
+            this.finishSoulSpace();
+            return;
+        }
         if (this.soulState == SoulState.PREPARE) {
             if (mc.thePlayer.openContainer != mc.thePlayer.inventoryContainer) {
-                if (!this.soulCloseSent) {
-                    mc.thePlayer.closeScreen();
-                    this.soulCloseSent = true;
-                }
+                mc.thePlayer.closeScreen();
                 return;
             }
             int soulIndex = this.findSoulIndex();
             if (soulIndex < 0) {
                 return;
             }
-            ItemStack soulStack = mc.thePlayer.inventory.mainInventory[soulIndex];
-            if (this.soulOpenerStack == null || !this.matches(this.soulOpenerStack, soulStack)) {
-                this.soulOpenerStack = soulStack.copy();
-            }
             if (!this.moveToMainHand(soulIndex)) {
                 return;
             }
             ItemStack heldStack = mc.thePlayer.getHeldItem();
-            if (!this.matches(this.soulOpenerStack, heldStack)) {
+            if (!this.isSoulStack(heldStack)) {
                 return;
             }
             this.soulContainer = mc.thePlayer.openContainer;
             this.soulWindowId = this.soulContainer.windowId;
             this.actionTicks = 0;
+            this.soulStateTicks = 0;
+            this.soulGuiSignal = false;
             this.soulState = SoulState.WAITING_OPEN;
             mc.getNetHandler().addToSendQueue(new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SNEAKING));
-            mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, heldStack.copy());
+            mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, heldStack);
             mc.getNetHandler().addToSendQueue(new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SNEAKING));
             return;
         }
         if (this.soulState == SoulState.WAITING_OPEN) {
-            if (this.isNewSoulContainer(mc.thePlayer.openContainer)) {
+            if (this.isNewSoulContainer(mc.thePlayer.openContainer)
+                    || this.soulGuiSignal) {
                 this.soulContainer = mc.thePlayer.openContainer;
                 this.soulWindowId = this.soulContainer.windowId;
                 this.soulState = SoulState.EXTRACTING;
                 this.actionTicks = 0;
+                this.soulStateTicks = 0;
+                this.soulGuiSignal = false;
                 return;
             }
-            if (++this.actionTicks >= 5) {
+            if (++this.actionTicks >= 40) {
                 this.soulState = SoulState.PREPARE;
                 this.actionTicks = 0;
             }
@@ -281,14 +298,20 @@ public class VillagerTrade extends Module {
                     mc.thePlayer.inventory.mainInventory,
                     soulSlot.getStack().stackSize
             );
-            if (amount <= 0 || !this.extractSoulStack(mc.thePlayer.openContainer, soulSlot)) {
+            if (amount <= 0
+                    || !this.extractSoulStack(
+                    mc.thePlayer.openContainer,
+                    soulSlot,
+                    amount >= Math.max(1, this.pendingSoulStack.getMaxStackSize())
+            )) {
                 this.finishSoulSpace();
                 return;
             }
-            this.pendingSoulAmount = this.soulBeforeCount + amount;
             this.soulContainer = mc.thePlayer.openContainer;
             this.soulWindowId = this.soulContainer.windowId;
             this.actionTicks = 0;
+            this.soulStateTicks = 0;
+            this.soulGuiSignal = false;
             this.soulState = SoulState.WAITING_REFRESH;
             return;
         }
@@ -301,14 +324,18 @@ public class VillagerTrade extends Module {
             this.finishSoulSpace();
             return;
         }
-        if (this.isNewSoulContainer(mc.thePlayer.openContainer)) {
+        if (this.isNewSoulContainer(mc.thePlayer.openContainer) || this.soulGuiSignal) {
             this.soulContainer = mc.thePlayer.openContainer;
             this.soulWindowId = this.soulContainer.windowId;
+            this.soulGuiSignal = false;
+            this.actionTicks = 0;
+        }
+        if (currentCount > this.soulBeforeCount) {
             this.soulState = SoulState.EXTRACTING;
             this.actionTicks = 0;
-        } else if (this.isSoulContainer(mc.thePlayer.openContainer) && currentCount > this.soulBeforeCount) {
-            this.soulState = SoulState.EXTRACTING;
-            this.actionTicks = 0;
+            this.soulStateTicks = 0;
+        } else if (this.soulContainer == mc.thePlayer.openContainer && this.actionTicks > 5) {
+            this.finishSoulSpace();
         }
     }
 
@@ -323,27 +350,32 @@ public class VillagerTrade extends Module {
             this.soulWindowId = this.soulContainer.windowId;
             this.soulState = SoulState.EXTRACTING;
             this.actionTicks = 0;
+            this.soulStateTicks = 0;
+            this.soulGuiSignal = false;
             this.merchantGui = null;
-            this.soulCloseSent = false;
             return true;
         }
         if (mc.thePlayer.openContainer != mc.thePlayer.inventoryContainer) {
             mc.thePlayer.closeScreen();
-            this.soulCloseSent = true;
         }
         this.merchantGui = null;
-        this.soulOpenerStack = null;
-        this.soulCloseSent = false;
         this.soulState = SoulState.PREPARE;
         this.actionTicks = 0;
         return true;
     }
 
-    private boolean extractSoulStack(Container container, Slot sourceSlot) {
-        if (container == null || sourceSlot == null || sourceSlot.getStack() == null) {
+    private boolean extractSoulStack(Container container, Slot sourceSlot, boolean wholeStack) {
+        if (container == null || sourceSlot == null || sourceSlot.getStack() == null
+                || mc.thePlayer.inventory.getItemStack() != null) {
             return false;
         }
-        mc.playerController.windowClick(container.windowId, sourceSlot.slotNumber, 0, 1, mc.thePlayer);
+        mc.playerController.windowClick(
+                container.windowId,
+                sourceSlot.slotNumber,
+                0,
+                wholeStack ? 1 : 0,
+                mc.thePlayer
+        );
         return true;
     }
 
@@ -370,25 +402,41 @@ public class VillagerTrade extends Module {
             this.waitingMerchantOpen = true;
             this.merchantOpenTicks = 0;
             this.activeEntityId = nearestEntity.getEntityId();
+            this.activeSignPosition = null;
+            this.idleTicks = 0;
             return;
         }
 
         TileEntitySign nearestSign = null;
         nearestDistance = Double.MAX_VALUE;
         double rangeSquared = configuredRange * configuredRange;
-        for (TileEntity tileEntity : mc.theWorld.loadedTileEntityList) {
-            if (!(tileEntity instanceof TileEntitySign)) {
-                continue;
-            }
-            BlockPos blockPos = tileEntity.getPos();
-            double distance = mc.thePlayer.getDistanceSq(
-                    blockPos.getX() + 0.5D,
-                    blockPos.getY() + 0.5D,
-                    blockPos.getZ() + 0.5D
-            );
-            if (distance <= rangeSquared && distance < nearestDistance) {
-                nearestSign = (TileEntitySign) tileEntity;
-                nearestDistance = distance;
+        int minX = (int) Math.floor(mc.thePlayer.posX - configuredRange);
+        int maxX = (int) Math.floor(mc.thePlayer.posX + configuredRange);
+        int minY = (int) Math.floor(mc.thePlayer.posY - configuredRange);
+        int maxY = (int) Math.floor(mc.thePlayer.posY + configuredRange);
+        int minZ = (int) Math.floor(mc.thePlayer.posZ - configuredRange);
+        int maxZ = (int) Math.floor(mc.thePlayer.posZ + configuredRange);
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    BlockPos blockPos = new BlockPos(x, y, z);
+                    if (this.rejectedSignPositions.contains(blockPos)) {
+                        continue;
+                    }
+                    TileEntity tileEntity = mc.theWorld.getTileEntity(blockPos);
+                    if (!(tileEntity instanceof TileEntitySign)) {
+                        continue;
+                    }
+                    double distance = mc.thePlayer.getDistanceSq(
+                            blockPos.getX() + 0.5D,
+                            blockPos.getY() + 0.5D,
+                            blockPos.getZ() + 0.5D
+                    );
+                    if (distance <= rangeSquared && distance < nearestDistance) {
+                        nearestSign = (TileEntitySign) tileEntity;
+                        nearestDistance = distance;
+                    }
+                }
             }
         }
         if (nearestSign != null) {
@@ -404,9 +452,16 @@ public class VillagerTrade extends Module {
             this.interactionDelay = 1;
             this.waitingMerchantOpen = true;
             this.merchantOpenTicks = 0;
+            this.activeEntityId = -1;
+            this.activeSignPosition = nearestSign.getPos();
+            this.idleTicks = 0;
         } else {
-            this.rejectedEntityIds.clear();
-            this.interactionDelay = 2;
+            if (++this.idleTicks > 100) {
+                this.rejectedEntityIds.clear();
+                this.rejectedSignPositions.clear();
+                this.idleTicks = 0;
+            }
+            this.interactionDelay = 5;
         }
     }
 
@@ -463,7 +518,7 @@ public class VillagerTrade extends Module {
         }
         for (Object object : container.inventorySlots) {
             Slot slot = (Slot) object;
-            if (slot.inventory != mc.thePlayer.inventory && this.matches(requiredStack, slot.getStack())) {
+            if (slot.inventory != mc.thePlayer.inventory && this.matchesSoulItem(requiredStack, slot.getStack())) {
                 return slot;
             }
         }
@@ -524,21 +579,19 @@ public class VillagerTrade extends Module {
             return false;
         }
         String displayName = stack.getDisplayName();
-        if (displayName != null && (displayName.contains("灵魂空间") || displayName.contains("灵魂"))) {
-            return true;
-        }
-        for (String tooltipLine : stack.getTooltip(mc.thePlayer, mc.gameSettings.advancedItemTooltips)) {
-            if (tooltipLine != null && tooltipLine.contains("灵魂空间")) {
-                return true;
-            }
-        }
-        return false;
+        return displayName != null && displayName.contains("灵魂空间");
     }
 
     private boolean matches(ItemStack firstStack, ItemStack secondStack) {
         return firstStack != null && secondStack != null
                 && ItemStack.areItemsEqual(firstStack, secondStack)
                 && ItemStack.areItemStackTagsEqual(firstStack, secondStack);
+    }
+
+    private boolean matchesSoulItem(ItemStack firstStack, ItemStack secondStack) {
+        return firstStack != null
+                && secondStack != null
+                && firstStack.getDisplayName().equals(secondStack.getDisplayName());
     }
 
     private void finishMerchant() {
@@ -554,7 +607,11 @@ public class VillagerTrade extends Module {
         if (this.activeEntityId >= 0) {
             this.rejectedEntityIds.add(this.activeEntityId);
         }
+        if (this.activeSignPosition != null) {
+            this.rejectedSignPositions.add(this.activeSignPosition);
+        }
         this.activeEntityId = -1;
+        this.activeSignPosition = null;
     }
 
     private void finishSoulSpace() {
@@ -562,12 +619,12 @@ public class VillagerTrade extends Module {
             mc.thePlayer.closeScreen();
         }
         this.pendingSoulStack = null;
-        this.soulOpenerStack = null;
         this.pendingSoulAmount = 0;
         this.soulContainer = null;
         this.soulWindowId = -1;
         this.soulState = SoulState.IDLE;
-        this.soulCloseSent = false;
+        this.soulStateTicks = 0;
+        this.soulGuiSignal = false;
         this.actionTicks = 0;
         this.merchantGui = null;
         this.interactionDelay = 0;
@@ -579,7 +636,6 @@ public class VillagerTrade extends Module {
         this.merchantGui = null;
         this.activeTrade = null;
         this.pendingSoulStack = null;
-        this.soulOpenerStack = null;
         this.pendingSoulAmount = 0;
         this.interactionDelay = 0;
         this.actionTicks = 0;
@@ -589,12 +645,16 @@ public class VillagerTrade extends Module {
         this.soulContainer = null;
         this.soulWindowId = -1;
         this.soulState = SoulState.IDLE;
-        this.soulCloseSent = false;
+        this.soulStateTicks = 0;
+        this.soulGuiSignal = false;
         this.waitingTradeRefresh = false;
         this.waitingMerchantOpen = false;
         this.merchantOpenTicks = 0;
         this.rejectedEntityIds.clear();
+        this.rejectedSignPositions.clear();
         this.activeEntityId = -1;
+        this.activeSignPosition = null;
+        this.idleTicks = 0;
     }
 
     private boolean isNewSoulContainer(Container container) {

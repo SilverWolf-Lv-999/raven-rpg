@@ -61,21 +61,27 @@ public final class TradeManager {
             return 0;
         }
 
+        int maxStackSize = Math.max(1, requiredItem.getMaxStackSize());
         int capacity = 0;
         for (ItemStack stack : inventory) {
             if (stack == null) {
-                capacity += requiredItem.getMaxStackSize();
+                capacity += maxStackSize;
             } else if (matches(requiredItem, stack)) {
-                capacity += Math.max(0, requiredItem.getMaxStackSize() - stack.stackSize);
+                capacity += Math.max(0, Math.min(maxStackSize, stack.getMaxStackSize()) - stack.stackSize);
             }
         }
         return capacity;
     }
 
     public static int bestSoulAmount(ItemStack requiredItem, int requiredAmount, ItemStack[] inventory, int soulAmount) {
+        if (requiredItem == null || inventory == null || soulAmount <= 0) {
+            return 0;
+        }
+
         int missing = Math.max(0, requiredAmount - count(requiredItem, inventory));
         int availableSpace = capacity(requiredItem, inventory);
-        return Math.min(Math.min(missing, availableSpace), Math.min(soulAmount, requiredItem.getMaxStackSize() * Math.max(1, inventory.length)));
+        int inventoryLimit = Math.max(1, requiredItem.getMaxStackSize()) * inventory.length;
+        return Math.max(0, Math.min(Math.min(missing, availableSpace), Math.min(soulAmount, inventoryLimit)));
     }
 
     private static boolean matches(ItemStack firstStack, ItemStack secondStack) {
