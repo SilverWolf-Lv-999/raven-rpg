@@ -44,6 +44,7 @@ public class VillagerTrade extends Module {
     private GuiMerchant merchantGui;
     private TradeEntry activeTrade;
     private ItemStack pendingSoulStack;
+    private ItemStack soulOpenerStack;
     private int pendingSoulAmount;
     private int interactionDelay;
     private int actionTicks;
@@ -53,6 +54,7 @@ public class VillagerTrade extends Module {
     private Container soulContainer;
     private int soulWindowId = -1;
     private SoulState soulState = SoulState.IDLE;
+    private boolean soulCloseSent;
     private boolean waitingTradeRefresh;
     private boolean waitingMerchantOpen;
     private int merchantOpenTicks;
@@ -85,6 +87,13 @@ public class VillagerTrade extends Module {
         if (!Utils.nullCheck()) {
             this.clearState();
             return;
+        }
+        if (this.soulState == SoulState.IDLE && this.isSoulContainer(mc.thePlayer.openContainer)) {
+            ItemStack manualSoulStack = this.findManualSoulStack(mc.thePlayer.openContainer);
+            if (manualSoulStack != null) {
+                this.beginSoulExtraction(manualSoulStack);
+                return;
+            }
         }
         if (this.soulState != SoulState.IDLE) {
             this.handleSoulSpace();
@@ -202,23 +211,26 @@ public class VillagerTrade extends Module {
 
     private void handleSoulSpace() {
         if (this.soulState == SoulState.PREPARE) {
-            if (++this.actionTicks > 80) {
-                this.finishSoulSpace();
-                return;
-            }
             if (mc.thePlayer.openContainer != mc.thePlayer.inventoryContainer) {
-                mc.thePlayer.closeScreen();
+                if (!this.soulCloseSent) {
+                    mc.thePlayer.closeScreen();
+                    this.soulCloseSent = true;
+                }
                 return;
             }
             int soulIndex = this.findSoulIndex();
             if (soulIndex < 0) {
                 return;
             }
+            ItemStack soulStack = mc.thePlayer.inventory.mainInventory[soulIndex];
+            if (this.soulOpenerStack == null || !this.matches(this.soulOpenerStack, soulStack)) {
+                this.soulOpenerStack = soulStack.copy();
+            }
             if (!this.moveToMainHand(soulIndex)) {
                 return;
             }
             ItemStack heldStack = mc.thePlayer.getHeldItem();
-            if (!this.isSoulStack(heldStack)) {
+            if (!this.matches(this.soulOpenerStack, heldStack)) {
                 return;
             }
             this.soulContainer = mc.thePlayer.openContainer;
@@ -226,19 +238,20 @@ public class VillagerTrade extends Module {
             this.actionTicks = 0;
             this.soulState = SoulState.WAITING_OPEN;
             mc.getNetHandler().addToSendQueue(new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.START_SNEAKING));
-            mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, heldStack);
+            mc.playerController.sendUseItem(mc.thePlayer, mc.theWorld, heldStack.copy());
             mc.getNetHandler().addToSendQueue(new C0BPacketEntityAction(mc.thePlayer, C0BPacketEntityAction.Action.STOP_SNEAKING));
             return;
         }
         if (this.soulState == SoulState.WAITING_OPEN) {
-            if (++this.actionTicks > 40) {
-                this.finishSoulSpace();
-                return;
-            }
             if (this.isNewSoulContainer(mc.thePlayer.openContainer)) {
                 this.soulContainer = mc.thePlayer.openContainer;
                 this.soulWindowId = this.soulContainer.windowId;
                 this.soulState = SoulState.EXTRACTING;
+                this.actionTicks = 0;
+                return;
+            }
+            if (++this.actionTicks >= 5) {
+                this.soulState = SoulState.PREPARE;
                 this.actionTicks = 0;
             }
             return;
@@ -311,12 +324,16 @@ public class VillagerTrade extends Module {
             this.soulState = SoulState.EXTRACTING;
             this.actionTicks = 0;
             this.merchantGui = null;
+            this.soulCloseSent = false;
             return true;
         }
         if (mc.thePlayer.openContainer != mc.thePlayer.inventoryContainer) {
             mc.thePlayer.closeScreen();
+            this.soulCloseSent = true;
         }
         this.merchantGui = null;
+        this.soulOpenerStack = null;
+        this.soulCloseSent = false;
         this.soulState = SoulState.PREPARE;
         this.actionTicks = 0;
         return true;
@@ -453,6 +470,23 @@ public class VillagerTrade extends Module {
         return null;
     }
 
+    private ItemStack findManualSoulStack(Container container) {
+        for (TradeEntry trade : TradeManager.getTrades()) {
+            ItemStack first = trade.getItemToBuy();
+            if (TradeManager.count(first, mc.thePlayer.inventory.mainInventory) < first.stackSize
+                    && this.findSoulSlot(container, first) != null) {
+                return first;
+            }
+            ItemStack second = trade.getSecondItemToBuy();
+            if (second != null
+                    && TradeManager.count(second, mc.thePlayer.inventory.mainInventory) < second.stackSize
+                    && this.findSoulSlot(container, second) != null) {
+                return second;
+            }
+        }
+        return null;
+    }
+
     private int findSoulIndex() {
         for (int index = 0; index < mc.thePlayer.inventory.mainInventory.length; index++) {
             if (this.isSoulStack(mc.thePlayer.inventory.mainInventory[index])) {
@@ -486,7 +520,19 @@ public class VillagerTrade extends Module {
     }
 
     private boolean isSoulStack(ItemStack stack) {
-        return stack != null && stack.getDisplayName().contains("灵魂");
+        if (stack == null) {
+            return false;
+        }
+        String displayName = stack.getDisplayName();
+        if (displayName != null && (displayName.contains("灵魂空间") || displayName.contains("灵魂"))) {
+            return true;
+        }
+        for (String tooltipLine : stack.getTooltip(mc.thePlayer, mc.gameSettings.advancedItemTooltips)) {
+            if (tooltipLine != null && tooltipLine.contains("灵魂空间")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean matches(ItemStack firstStack, ItemStack secondStack) {
@@ -516,10 +562,12 @@ public class VillagerTrade extends Module {
             mc.thePlayer.closeScreen();
         }
         this.pendingSoulStack = null;
+        this.soulOpenerStack = null;
         this.pendingSoulAmount = 0;
         this.soulContainer = null;
         this.soulWindowId = -1;
         this.soulState = SoulState.IDLE;
+        this.soulCloseSent = false;
         this.actionTicks = 0;
         this.merchantGui = null;
         this.interactionDelay = 0;
@@ -531,6 +579,7 @@ public class VillagerTrade extends Module {
         this.merchantGui = null;
         this.activeTrade = null;
         this.pendingSoulStack = null;
+        this.soulOpenerStack = null;
         this.pendingSoulAmount = 0;
         this.interactionDelay = 0;
         this.actionTicks = 0;
@@ -540,6 +589,7 @@ public class VillagerTrade extends Module {
         this.soulContainer = null;
         this.soulWindowId = -1;
         this.soulState = SoulState.IDLE;
+        this.soulCloseSent = false;
         this.waitingTradeRefresh = false;
         this.waitingMerchantOpen = false;
         this.merchantOpenTicks = 0;
