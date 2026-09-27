@@ -216,12 +216,7 @@ public final class RPGUIUtility {
     }
 
     public static void selectAndFillMerchantTrade(GuiMerchant guiMerchant, int selectedMerchantRecipe, boolean completeTrade) {
-        ContainerMerchant containerMerchant = (ContainerMerchant) guiMerchant.inventorySlots;
-        guiMerchant.selectedMerchantRecipe = selectedMerchantRecipe;
-        containerMerchant.setCurrentRecipeIndex(selectedMerchantRecipe);
-        PacketBuffer packetBuffer = new PacketBuffer(Unpooled.buffer());
-        packetBuffer.writeInt(selectedMerchantRecipe);
-        PacketUtils.sendPacketNoEvent(new C17PacketCustomPayload("MC|TrSel", packetBuffer));
+        selectMerchantTrade(guiMerchant, selectedMerchantRecipe);
         MerchantRecipeList merchantRecipeList = guiMerchant.getMerchant().getRecipes(Minecraft.getMinecraft().thePlayer);
         if (merchantRecipeList != null && selectedMerchantRecipe >= 0 && selectedMerchantRecipe < merchantRecipeList.size()) {
             MerchantRecipe merchantRecipe = merchantRecipeList.get(selectedMerchantRecipe);
@@ -235,34 +230,71 @@ public final class RPGUIUtility {
         }
     }
 
+    public static void selectMerchantTrade(GuiMerchant guiMerchant, int selectedMerchantRecipe) {
+        ContainerMerchant containerMerchant = (ContainerMerchant) guiMerchant.inventorySlots;
+        guiMerchant.selectedMerchantRecipe = selectedMerchantRecipe;
+        containerMerchant.setCurrentRecipeIndex(selectedMerchantRecipe);
+        PacketBuffer packetBuffer = new PacketBuffer(Unpooled.buffer());
+        packetBuffer.writeInt(selectedMerchantRecipe);
+        PacketUtils.sendPacketNoEvent(new C17PacketCustomPayload("MC|TrSel", packetBuffer));
+    }
+
     private static void completeMerchantTrade(GuiMerchant guiMerchant, MerchantRecipe merchantRecipe) {
         ContainerMerchant containerMerchant = (ContainerMerchant) guiMerchant.inventorySlots;
         MerchantClickState state = new MerchantClickState(containerMerchant, Minecraft.getMinecraft().thePlayer);
-        if (state.cursorStack != null) {
-            return;
-        }
-        for (int index = 0; index < 2; index++) {
-            if (state.slotStacks[index] != null) {
-                if (!appendMerchantClick(state, index, 0, 1) || state.slotStacks[index] != null) {
-                    return;
-                }
-            }
-        }
-        state.slotStacks[2] = null;
-        if (!moveMerchantItemToSlot(state, merchantRecipe.getItemToBuy(), merchantRecipe.getItemToBuy().stackSize, 0)) {
-            return;
-        }
-        ItemStack secondItemToBuy = merchantRecipe.getSecondItemToBuy();
-        if (secondItemToBuy != null && !moveMerchantItemToSlot(state, secondItemToBuy, secondItemToBuy.stackSize, 1)) {
-            return;
-        }
-        state.slotStacks[2] = merchantRecipe.getItemToSell().copy();
-        if (!appendMerchantClick(state, 2, 0, 1)) {
+        if (!completeMerchantTrade(state, merchantRecipe)) {
             return;
         }
         for (C0EPacketClickWindow packet : state.packets) {
             PacketUtils.sendPacketNoEvent(packet);
         }
+    }
+
+    public static int completeMerchantTrades(GuiMerchant guiMerchant, MerchantRecipe merchantRecipe, int tradeCount) {
+        if (guiMerchant == null || merchantRecipe == null || tradeCount <= 0) {
+            return 0;
+        }
+
+        MerchantClickState state = new MerchantClickState(
+                (ContainerMerchant) guiMerchant.inventorySlots,
+                Minecraft.getMinecraft().thePlayer
+        );
+        int completedTrades = 0;
+        while (completedTrades < tradeCount && completeMerchantTrade(state, merchantRecipe)) {
+            completedTrades++;
+        }
+        for (C0EPacketClickWindow packet : state.packets) {
+            PacketUtils.sendPacketNoEvent(packet);
+        }
+        return completedTrades;
+    }
+
+    private static boolean completeMerchantTrade(MerchantClickState state, MerchantRecipe merchantRecipe) {
+        if (state.cursorStack != null) {
+            return false;
+        }
+        for (int index = 0; index < 2; index++) {
+            if (state.slotStacks[index] != null) {
+                if (!appendMerchantClick(state, index, 0, 1) || state.slotStacks[index] != null) {
+                    return false;
+                }
+            }
+        }
+        state.slotStacks[2] = null;
+        if (!moveMerchantItemToSlot(state, merchantRecipe.getItemToBuy(), merchantRecipe.getItemToBuy().stackSize, 0)) {
+            return false;
+        }
+        ItemStack secondItemToBuy = merchantRecipe.getSecondItemToBuy();
+        if (secondItemToBuy != null && !moveMerchantItemToSlot(state, secondItemToBuy, secondItemToBuy.stackSize, 1)) {
+            return false;
+        }
+        state.slotStacks[2] = merchantRecipe.getItemToSell().copy();
+        if (!appendMerchantClick(state, 2, 0, 1)) {
+            return false;
+        }
+        state.slotStacks[0] = null;
+        state.slotStacks[1] = null;
+        return true;
     }
 
     public static void fillMerchantTrade(GuiMerchant guiMerchant, MerchantRecipe merchantRecipe) {
@@ -444,8 +476,8 @@ public final class RPGUIUtility {
     }
 
     private static boolean sameMerchantStack(ItemStack firstStack, ItemStack secondStack) {
-        return firstStack != null && secondStack != null && firstStack.getItem() == secondStack.getItem()
-            && (!firstStack.getHasSubtypes() || firstStack.getMetadata() == secondStack.getMetadata())
+        return firstStack != null && secondStack != null
+            && ItemStack.areItemsEqual(firstStack, secondStack)
             && ItemStack.areItemStackTagsEqual(firstStack, secondStack);
     }
 

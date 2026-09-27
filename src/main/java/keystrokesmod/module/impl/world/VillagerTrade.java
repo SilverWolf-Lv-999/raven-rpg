@@ -24,6 +24,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntitySign;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumFacing;
+import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.village.MerchantRecipe;
 import net.minecraft.village.MerchantRecipeList;
 import net.minecraftforge.client.event.GuiOpenEvent;
@@ -40,6 +41,7 @@ public class VillagerTrade extends Module {
     public static final ButtonSetting silent = new ButtonSetting("Silent", true);
     public static final ButtonSetting openTradeHandler = new ButtonSetting("Open trade manager", () -> mc.displayGuiScreen(INSTANCE));
     public static final ButtonSetting getOnSoulSpace = new ButtonSetting("Get on soul space", true);
+    public static final ButtonSetting crosshairNPC = new ButtonSetting("Crosshair NPC", true);
 
     private GuiMerchant merchantGui;
     private TradeEntry activeTrade;
@@ -49,6 +51,10 @@ public class VillagerTrade extends Module {
     private int actionTicks;
     private int actionWindowId = -1;
     private int actionBeforeCount;
+    private int actionBeforeResultCount;
+    private int actionExpectedInputCount;
+    private int actionExpectedResultCount;
+    private int batchTradesRemaining;
     private int soulBeforeCount;
     private int soulStateTicks;
     private Container soulContainer;
@@ -57,6 +63,7 @@ public class VillagerTrade extends Module {
     private boolean soulGuiSignal;
     private boolean waitingTradeRefresh;
     private boolean waitingMerchantOpen;
+    private boolean merchantOpenedByModule;
     private int merchantOpenTicks;
     private final Set<Integer> rejectedEntityIds = new HashSet<>();
     private final Set<BlockPos> rejectedSignPositions = new HashSet<>();
@@ -70,6 +77,7 @@ public class VillagerTrade extends Module {
         this.registerSetting(silent);
         this.registerSetting(openTradeHandler);
         this.registerSetting(getOnSoulSpace);
+        this.registerSetting(crosshairNPC);
     }
 
     @Override
@@ -142,7 +150,7 @@ public class VillagerTrade extends Module {
             this.merchantGui = (GuiMerchant) event.gui;
             this.waitingMerchantOpen = false;
             this.merchantOpenTicks = 0;
-            if (silent.isToggled()) {
+            if (silent.isToggled() && this.merchantOpenedByModule) {
                 mc.thePlayer.openContainer = this.merchantGui.inventorySlots;
                 event.setCanceled(true);
             }
@@ -182,20 +190,39 @@ public class VillagerTrade extends Module {
         this.waitingMerchantOpen = false;
         this.merchantOpenTicks = 0;
         if (this.waitingTradeRefresh) {
-            if (this.actionWindowId != containerMerchant.windowId
-                    || this.getTradeItemCount(this.activeTrade) != this.actionBeforeCount) {
+            int currentInputCount = this.getTradeItemCount(this.activeTrade);
+            int currentResultCount = TradeManager.count(
+                    this.activeTrade.getItemToSell(),
+                    mc.thePlayer.inventory.mainInventory
+            );
+            if (currentInputCount <= this.actionExpectedInputCount
+                    && currentResultCount >= this.actionExpectedResultCount) {
                 this.waitingTradeRefresh = false;
                 this.actionTicks = 0;
-            } else if (++this.actionTicks < 20) {
+                if (this.batchTradesRemaining > 0) {
+                    this.batchTradesRemaining--;
+                }
+            } else if (++this.actionTicks < 40) {
                 return true;
             } else {
                 this.waitingTradeRefresh = false;
+                this.actionTicks = 0;
+                this.interactionDelay = 5;
+                return true;
             }
         }
 
         MerchantRecipeList recipes = this.merchantGui.getMerchant().getRecipes(mc.thePlayer);
+        if (recipes == null || recipes.isEmpty()) {
+            this.interactionDelay = 1;
+            return true;
+        }
         TradeEntry nextTrade = this.findTrade(recipes);
         if (nextTrade == null) {
+            if (++this.actionTicks < 40) {
+                this.interactionDelay = 1;
+                return true;
+            }
             this.finishMerchant();
             return false;
         }
@@ -205,20 +232,61 @@ public class VillagerTrade extends Module {
             return false;
         }
 
-        ItemStack missingStack = this.findMissingStack(recipe);
+        int batchTrades = this.batchTradesRemaining > 0
+                ? 1
+                : this.getOutputBatchSize(recipe);
+        if (batchTrades <= 0) {
+            this.interactionDelay = 5;
+            return true;
+        }
+        ItemStack missingStack = this.findMissingStack(recipe, batchTrades);
         if (missingStack != null) {
-            if (getOnSoulSpace.isToggled() && this.beginSoulExtraction(missingStack)) {
-                return true;
+            if (this.batchTradesRemaining > 0) {
+                this.batchTradesRemaining = 0;
+                batchTrades = this.getOutputBatchSize(recipe);
+                missingStack = this.findMissingStack(recipe, batchTrades);
             }
-            this.finishMerchant();
-            return false;
+            if (missingStack != null) {
+                if (getOnSoulSpace.isToggled() && this.beginSoulExtraction(missingStack)) {
+                    return true;
+                }
+                batchTrades = this.getAvailableInputBatchSize(recipe, batchTrades);
+                if (batchTrades <= 0) {
+                    this.finishMerchant();
+                    return false;
+                }
+                missingStack = this.findMissingStack(recipe, batchTrades);
+                if (missingStack != null) {
+                    this.finishMerchant();
+                    return false;
+                }
+            }
         }
 
         int recipeIndex = recipes.indexOf(recipe);
-        RPGUIUtility.selectAndFillMerchantTrade(this.merchantGui, recipeIndex, true);
+        RPGUIUtility.selectMerchantTrade(this.merchantGui, recipeIndex);
+        int completedTrades = RPGUIUtility.completeMerchantTrades(this.merchantGui, recipe, 1);
+        if (completedTrades <= 0) {
+            this.interactionDelay = 1;
+            return true;
+        }
+        if (this.batchTradesRemaining <= 0) {
+            this.batchTradesRemaining = batchTrades;
+        }
         this.activeTrade = nextTrade;
         this.actionWindowId = containerMerchant.windowId;
         this.actionBeforeCount = this.getTradeItemCount(nextTrade);
+        this.actionBeforeResultCount = TradeManager.count(
+                recipe.getItemToSell(),
+                mc.thePlayer.inventory.mainInventory
+        );
+        int inputPerTrade = recipe.getItemToBuy().stackSize;
+        if (recipe.getSecondItemToBuy() != null) {
+            inputPerTrade += recipe.getSecondItemToBuy().stackSize;
+        }
+        this.actionExpectedInputCount = this.actionBeforeCount - inputPerTrade * completedTrades;
+        this.actionExpectedResultCount = this.actionBeforeResultCount
+                + recipe.getItemToSell().stackSize * completedTrades;
         this.actionTicks = 0;
         this.waitingTradeRefresh = true;
         return true;
@@ -298,8 +366,29 @@ public class VillagerTrade extends Module {
                     mc.thePlayer.inventory.mainInventory,
                     soulSlot.getStack().stackSize
             );
-            if (amount <= 0
-                    || !this.extractSoulStack(
+            int emptySlots = 0;
+            for (ItemStack stack : mc.thePlayer.inventory.mainInventory) {
+                if (stack == null) {
+                    emptySlots++;
+                }
+            }
+            if (emptySlots > 1) {
+                amount = Math.min(
+                        amount,
+                        Math.max(
+                                0,
+                                TradeManager.capacity(
+                                        this.pendingSoulStack,
+                                        mc.thePlayer.inventory.mainInventory
+                                ) - Math.max(1, this.pendingSoulStack.getMaxStackSize())
+                        )
+                );
+            }
+            if (amount <= 0) {
+                this.actionTicks = 0;
+                return;
+            }
+            if (!this.extractSoulStack(
                     mc.thePlayer.openContainer,
                     soulSlot,
                     amount >= Math.max(1, this.pendingSoulStack.getMaxStackSize())
@@ -380,6 +469,34 @@ public class VillagerTrade extends Module {
     }
 
     private void interactWithNearestTarget() {
+        if (crosshairNPC.isToggled()) {
+            if (mc.objectMouseOver == null
+                    || mc.objectMouseOver.typeOfHit != MovingObjectPosition.MovingObjectType.ENTITY
+                    || !(mc.objectMouseOver.entityHit instanceof EntityLivingBase)) {
+                this.interactionDelay = 2;
+                return;
+            }
+            EntityLivingBase target = (EntityLivingBase) mc.objectMouseOver.entityHit;
+            double configuredRange = range.getInput();
+            if (target == mc.thePlayer
+                    || target.isDead
+                    || this.rejectedEntityIds.contains(target.getEntityId())
+                    || mc.thePlayer.getDistanceSqToEntity(target) > configuredRange * configuredRange) {
+                this.interactionDelay = 2;
+                return;
+            }
+            mc.getNetHandler().addToSendQueue(
+                    new C02PacketUseEntity(target, C02PacketUseEntity.Action.INTERACT)
+            );
+            this.interactionDelay = 1;
+            this.waitingMerchantOpen = true;
+            this.merchantOpenTicks = 0;
+            this.activeEntityId = target.getEntityId();
+            this.activeSignPosition = null;
+            this.merchantOpenedByModule = true;
+            this.idleTicks = 0;
+            return;
+        }
         EntityLivingBase nearestEntity = null;
         double nearestDistance = Double.MAX_VALUE;
         double configuredRange = range.getInput();
@@ -403,6 +520,7 @@ public class VillagerTrade extends Module {
             this.merchantOpenTicks = 0;
             this.activeEntityId = nearestEntity.getEntityId();
             this.activeSignPosition = null;
+            this.merchantOpenedByModule = true;
             this.idleTicks = 0;
             return;
         }
@@ -454,6 +572,7 @@ public class VillagerTrade extends Module {
             this.merchantOpenTicks = 0;
             this.activeEntityId = -1;
             this.activeSignPosition = nearestSign.getPos();
+            this.merchantOpenedByModule = true;
             this.idleTicks = 0;
         } else {
             if (++this.idleTicks > 100) {
@@ -491,16 +610,220 @@ public class VillagerTrade extends Module {
         return null;
     }
 
-    private ItemStack findMissingStack(MerchantRecipe recipe) {
+    private ItemStack findMissingStack(MerchantRecipe recipe, int tradeCount) {
         ItemStack first = recipe.getItemToBuy();
-        if (TradeManager.count(first, mc.thePlayer.inventory.mainInventory) < first.stackSize) {
-            return first.copy();
-        }
         ItemStack second = recipe.getSecondItemToBuy();
-        if (second != null && TradeManager.count(second, mc.thePlayer.inventory.mainInventory) < second.stackSize) {
-            return second.copy();
+        if (second != null && this.matches(first, second)) {
+            int required = (first.stackSize + second.stackSize) * tradeCount;
+            int missing = required - TradeManager.count(first, mc.thePlayer.inventory.mainInventory);
+            if (missing > 0) {
+                ItemStack result = first.copy();
+                result.stackSize = missing;
+                return result;
+            }
+            return null;
+        }
+        int firstRequired = first.stackSize * tradeCount;
+        int firstMissing = firstRequired - TradeManager.count(first, mc.thePlayer.inventory.mainInventory);
+        if (firstMissing > 0) {
+            ItemStack missing = first.copy();
+            missing.stackSize = firstMissing;
+            return missing;
+        }
+        if (second != null) {
+            int secondRequired = second.stackSize * tradeCount;
+            int secondMissing = secondRequired - TradeManager.count(second, mc.thePlayer.inventory.mainInventory);
+            if (secondMissing > 0) {
+                ItemStack missing = second.copy();
+                missing.stackSize = secondMissing;
+                return missing;
+            }
         }
         return null;
+    }
+
+    private int getOutputBatchSize(MerchantRecipe recipe) {
+        ItemStack result = recipe.getItemToSell();
+        if (result == null || result.stackSize <= 0) {
+            return 0;
+        }
+        int availableTrades = Math.max(0, recipe.getMaxTradeUses() - recipe.getToolUses());
+        int lowerBound = 0;
+        while (lowerBound < availableTrades) {
+            int candidate = lowerBound + (availableTrades - lowerBound + 1) / 2;
+            if (this.canFitTradeBatch(recipe, candidate, true)) {
+                lowerBound = candidate;
+            } else {
+                availableTrades = candidate - 1;
+            }
+        }
+        if (lowerBound == 0) {
+            availableTrades = Math.max(0, recipe.getMaxTradeUses() - recipe.getToolUses());
+            while (lowerBound < availableTrades) {
+                int candidate = lowerBound + (availableTrades - lowerBound + 1) / 2;
+                if (this.canFitTradeBatch(recipe, candidate, false)) {
+                    lowerBound = candidate;
+                } else {
+                    availableTrades = candidate - 1;
+                }
+            }
+        }
+        return lowerBound;
+    }
+
+    private boolean canFitTradeBatch(MerchantRecipe recipe, int tradeCount, boolean reserveSlot) {
+        ItemStack[] inventory = new ItemStack[mc.thePlayer.inventory.mainInventory.length];
+        for (int index = 0; index < inventory.length; index++) {
+            ItemStack stack = mc.thePlayer.inventory.mainInventory[index];
+            inventory[index] = stack == null ? null : stack.copy();
+        }
+        ItemStack firstItem = recipe.getItemToBuy();
+        ItemStack secondItem = recipe.getSecondItemToBuy();
+        if (secondItem != null && this.matches(firstItem, secondItem)) {
+            int required = (firstItem.stackSize + secondItem.stackSize) * tradeCount;
+            int available = TradeManager.count(firstItem, inventory);
+            if (!this.addInventoryItem(
+                    inventory,
+                    firstItem,
+                    Math.max(0, required - available),
+                    reserveSlot
+            )) {
+                return false;
+            }
+            this.consumeInventoryItem(inventory, firstItem, required);
+        } else {
+            int firstRequired = firstItem.stackSize * tradeCount;
+            int firstAvailable = TradeManager.count(firstItem, inventory);
+            if (!this.addInventoryItem(
+                    inventory,
+                    firstItem,
+                    Math.max(0, firstRequired - firstAvailable),
+                    reserveSlot
+            )) {
+                return false;
+            }
+            if (secondItem != null) {
+                int secondRequired = secondItem.stackSize * tradeCount;
+                int secondAvailable = TradeManager.count(secondItem, inventory);
+                if (!this.addInventoryItem(
+                        inventory,
+                        secondItem,
+                        Math.max(0, secondRequired - secondAvailable),
+                        reserveSlot
+                )) {
+                    return false;
+                }
+            }
+            this.consumeInventoryItem(inventory, firstItem, firstRequired);
+            if (secondItem != null) {
+                this.consumeInventoryItem(
+                        inventory,
+                        secondItem,
+                        secondItem.stackSize * tradeCount
+                );
+            }
+        }
+        boolean hasEmptySlot = false;
+        for (ItemStack stack : inventory) {
+            if (stack == null) {
+                hasEmptySlot = true;
+                break;
+            }
+        }
+        if (!hasEmptySlot && reserveSlot) {
+            return false;
+        }
+        int outputCapacity = TradeManager.capacity(recipe.getItemToSell(), inventory);
+        if (reserveSlot) {
+            outputCapacity -= Math.max(1, recipe.getItemToSell().getMaxStackSize());
+        }
+        return outputCapacity >= recipe.getItemToSell().stackSize * tradeCount;
+    }
+
+    private boolean addInventoryItem(ItemStack[] inventory, ItemStack requiredItem, int amount, boolean reserveSlot) {
+        if (requiredItem == null || amount <= 0) {
+            return true;
+        }
+        int remaining = amount;
+        int emptySlots = 0;
+        int maxStackSize = Math.max(1, requiredItem.getMaxStackSize());
+        for (ItemStack stack : inventory) {
+            if (stack == null) {
+                emptySlots++;
+                continue;
+            }
+            if (!this.matches(requiredItem, stack)) {
+                continue;
+            }
+            int capacity = Math.max(0, Math.min(maxStackSize, stack.getMaxStackSize()) - stack.stackSize);
+            int added = Math.min(remaining, capacity);
+            stack.stackSize += added;
+            remaining -= added;
+            if (remaining <= 0) {
+                return true;
+            }
+        }
+        for (int index = 0; index < inventory.length && remaining > 0; index++) {
+            if (inventory[index] != null || (reserveSlot && emptySlots <= 1)) {
+                continue;
+            }
+            int added = Math.min(remaining, maxStackSize);
+            ItemStack addedStack = requiredItem.copy();
+            addedStack.stackSize = added;
+            inventory[index] = addedStack;
+            emptySlots--;
+            remaining -= added;
+        }
+        return remaining <= 0;
+    }
+
+    private void consumeInventoryItem(ItemStack[] inventory, ItemStack requiredItem, int amount) {
+        if (requiredItem == null || amount <= 0) {
+            return;
+        }
+        int remaining = amount;
+        for (int index = 0; index < inventory.length && remaining > 0; index++) {
+            ItemStack stack = inventory[index];
+            if (!this.matches(requiredItem, stack)) {
+                continue;
+            }
+            int consumed = Math.min(remaining, stack.stackSize);
+            stack.stackSize -= consumed;
+            remaining -= consumed;
+            if (stack.stackSize <= 0) {
+                inventory[index] = null;
+            }
+        }
+    }
+
+    private int getAvailableInputBatchSize(MerchantRecipe recipe, int limit) {
+        int availableTrades = limit;
+        ItemStack first = recipe.getItemToBuy();
+        if (first == null || first.stackSize <= 0) {
+            return 0;
+        }
+        ItemStack second = recipe.getSecondItemToBuy();
+        if (second != null && this.matches(first, second)) {
+            return Math.min(
+                    availableTrades,
+                    TradeManager.count(first, mc.thePlayer.inventory.mainInventory)
+                            / (first.stackSize + second.stackSize)
+            );
+        }
+        availableTrades = Math.min(
+                availableTrades,
+                TradeManager.count(first, mc.thePlayer.inventory.mainInventory) / first.stackSize
+        );
+        if (second != null) {
+            if (second.stackSize <= 0) {
+                return 0;
+            }
+            availableTrades = Math.min(
+                    availableTrades,
+                    TradeManager.count(second, mc.thePlayer.inventory.mainInventory) / second.stackSize
+            );
+        }
+        return availableTrades;
     }
 
     private int getTradeItemCount(TradeEntry trade) {
@@ -509,7 +832,9 @@ public class VillagerTrade extends Module {
         }
         int count = TradeManager.count(trade.getItemToBuy(), mc.thePlayer.inventory.mainInventory);
         ItemStack second = trade.getSecondItemToBuy();
-        return second == null ? count : count + TradeManager.count(second, mc.thePlayer.inventory.mainInventory);
+        return second == null || this.matches(trade.getItemToBuy(), second)
+                ? count
+                : count + TradeManager.count(second, mc.thePlayer.inventory.mainInventory);
     }
 
     private Slot findSoulSlot(Container container, ItemStack requiredStack) {
@@ -528,11 +853,21 @@ public class VillagerTrade extends Module {
     private ItemStack findManualSoulStack(Container container) {
         for (TradeEntry trade : TradeManager.getTrades()) {
             ItemStack first = trade.getItemToBuy();
+            ItemStack second = trade.getSecondItemToBuy();
+            if (second != null && this.matches(first, second)) {
+                int required = first.stackSize + second.stackSize;
+                int current = TradeManager.count(first, mc.thePlayer.inventory.mainInventory);
+                if (current < required && this.findSoulSlot(container, first) != null) {
+                    ItemStack missing = first.copy();
+                    missing.stackSize = required - current;
+                    return missing;
+                }
+                continue;
+            }
             if (TradeManager.count(first, mc.thePlayer.inventory.mainInventory) < first.stackSize
                     && this.findSoulSlot(container, first) != null) {
                 return first;
             }
-            ItemStack second = trade.getSecondItemToBuy();
             if (second != null
                     && TradeManager.count(second, mc.thePlayer.inventory.mainInventory) < second.stackSize
                     && this.findSoulSlot(container, second) != null) {
@@ -595,12 +930,14 @@ public class VillagerTrade extends Module {
     }
 
     private void finishMerchant() {
-        if (mc.thePlayer.openContainer instanceof ContainerMerchant) {
+        if (this.merchantOpenedByModule && mc.thePlayer.openContainer instanceof ContainerMerchant) {
             mc.thePlayer.closeScreen();
         }
         this.merchantGui = null;
         this.activeTrade = null;
         this.waitingTradeRefresh = false;
+        this.batchTradesRemaining = 0;
+        this.merchantOpenedByModule = false;
         this.interactionDelay = 1;
         this.waitingMerchantOpen = false;
         this.merchantOpenTicks = 0;
@@ -641,6 +978,10 @@ public class VillagerTrade extends Module {
         this.actionTicks = 0;
         this.actionWindowId = -1;
         this.actionBeforeCount = 0;
+        this.actionBeforeResultCount = 0;
+        this.actionExpectedInputCount = 0;
+        this.actionExpectedResultCount = 0;
+        this.batchTradesRemaining = 0;
         this.soulBeforeCount = 0;
         this.soulContainer = null;
         this.soulWindowId = -1;
@@ -649,6 +990,7 @@ public class VillagerTrade extends Module {
         this.soulGuiSignal = false;
         this.waitingTradeRefresh = false;
         this.waitingMerchantOpen = false;
+        this.merchantOpenedByModule = false;
         this.merchantOpenTicks = 0;
         this.rejectedEntityIds.clear();
         this.rejectedSignPositions.clear();
