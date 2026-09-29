@@ -14,6 +14,7 @@ import keystrokesmod.command.impl.Profiles;
 import keystrokesmod.command.impl.ShowAll;
 import keystrokesmod.command.impl.Toggle;
 import keystrokesmod.command.impl.Track;
+import keystrokesmod.command.impl.TrackingLiving;
 import keystrokesmod.command.impl.Unbind;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.ChatCommands;
@@ -43,6 +44,7 @@ public class CommandManager {
         register(new Enemy());
         register(new Prefix());
         register(trackCommand = new Track());
+        register(new TrackingLiving());
         register(new Profiles());
         register(new ShowAll());
         register(new HideAll());

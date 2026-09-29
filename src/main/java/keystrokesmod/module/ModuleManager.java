@@ -100,6 +100,7 @@ public class ModuleManager {
     public static AutoAnswer autoAnswer;
     public static AutoOperation autoOperation;
     public static Disabler disabler;
+    public static AutoTracking autoTracking;
 
     public void register() {
         this.addModule(new AntiPacket());
@@ -184,6 +185,7 @@ public class ModuleManager {
         this.addModule(new AutoJump());
         this.addModule(autoSwap = new AutoSwap());
         this.addModule(autoShell = new AutoShell());
+        this.addModule(autoTracking = new AutoTracking());
         this.addModule(villagerTrade = new VillagerTrade());
         this.addModule(new AutoCD());
         this.addModule(new AutoBack());
