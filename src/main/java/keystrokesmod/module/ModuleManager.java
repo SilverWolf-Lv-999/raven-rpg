@@ -159,6 +159,7 @@ public class ModuleManager {
         this.addModule(new Dolphin());
         this.addModule(fly = new Fly());
         this.addModule(invmove = new InvMove());
+        this.addModule(new AutoWalk());
         this.addModule(keepSprint = new KeepSprint());
         this.addModule(longJump = new LongJump());
         this.addModule(noSlow = new NoSlow());
