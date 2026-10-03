@@ -266,7 +266,7 @@ public class AutoShell extends Module {
             moneyWindowId = moneyContainer.windowId;
             moneyState = MoneyState.WAITING_SHELL_REFRESH;
             moneyStateTicks = 0;
-            mc.playerController.windowClick(moneyWindowId, moneySlot.slotNumber, 0, 1, mc.thePlayer);
+            mc.playerController.windowClick(moneyWindowId, moneySlot.slotNumber, 1, 0, mc.thePlayer);
             return;
         }
 
