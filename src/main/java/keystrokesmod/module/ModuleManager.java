@@ -79,6 +79,7 @@ public class ModuleManager {
     public static AntiKnockback antiKnockback;
     public static ExtendCamera extendCamera;
     public static Freelook freelook;
+    public static FullBright fullBright;
     public static InvManager invManager;
     public static NoCameraClip noCameraClip;
     public static BedWars bedwars;
@@ -228,6 +229,7 @@ public class ModuleManager {
         this.addModule(new ChestESP());
         this.addModule(extendCamera = new ExtendCamera());
         this.addModule(freelook = new Freelook());
+        this.addModule(fullBright = new FullBright());
         this.addModule(new FallView());
         this.addModule(new Holdlook());
         this.addModule(hud = new HUD());
