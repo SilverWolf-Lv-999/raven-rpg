@@ -272,18 +272,25 @@ public class AutoShell extends Module {
 
         if (moneyState == MoneyState.WAITING_SHELL_REFRESH) {
             Container container = mc.thePlayer.openContainer;
-            if (!isNewMoneyContainer(container)) {
-                return;
-            }
-
-            moneyContainer = container;
-            moneyWindowId = container.windowId;
-            if (getPlayerMoneyCount(extractedMoney) > extractBeforeCount) {
+            int currentCount = getPlayerMoneyCount(extractedMoney);
+            if (currentCount > extractBeforeCount) {
+                if (isMoneyContainer(container)) {
+                    moneyContainer = container;
+                    moneyWindowId = container.windowId;
+                }
                 moneyState = MoneyState.EXTRACTING;
                 moneyStateTicks = 0;
                 return;
             }
 
+            if (!isNewMoneyContainer(container) && moneyStateTicks < 5) {
+                return;
+            }
+
+            if (isMoneyContainer(container)) {
+                moneyContainer = container;
+                moneyWindowId = container.windowId;
+            }
             shellMayContainMoney = true;
             startNextMoneyAction();
             return;

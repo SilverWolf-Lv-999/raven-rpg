@@ -190,6 +190,7 @@ public class ModuleManager {
         this.addModule(villagerTrade = new VillagerTrade());
         this.addModule(new AutoCD());
         this.addModule(new AutoBack());
+        this.addModule(new AutoLogin());
         this.addModule(new BridgeAssist());
         this.addModule(new Clutch());
         this.addModule(new Derp());
