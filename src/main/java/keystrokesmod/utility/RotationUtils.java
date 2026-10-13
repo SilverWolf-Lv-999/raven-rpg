@@ -277,6 +277,9 @@ public class RotationUtils implements IMinecraftInstance {
         double centerY;
         if (entity instanceof EntityLivingBase) {
             centerY = entity.posY + ((EntityLivingBase) entity).getEyeHeight();
+            if (centerY < bb.minY || centerY > bb.maxY) {
+                centerY = (bb.minY + bb.maxY) / 2.0;
+            }
         } else {
             centerY = (bb.minY + bb.maxY) / 2.0;
         }

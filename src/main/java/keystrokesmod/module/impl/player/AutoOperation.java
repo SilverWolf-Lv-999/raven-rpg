@@ -1,14 +1,21 @@
 package keystrokesmod.module.impl.player;
 
 import keystrokesmod.module.Module;
+import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.utility.Utils;
 import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.play.client.C08PacketPlayerBlockPlacement;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.tileentity.TileEntitySign;
+import net.minecraft.util.BlockPos;
+import net.minecraft.util.EnumFacing;
 
 public class AutoOperation extends Module {
     private final SliderSetting operationDelay = new SliderSetting("Delay", " tick", 1.0, 0.0, 20.0, 0.1);
+    private final ButtonSetting sign = new ButtonSetting("Sign", false);
     private ItemStack operationStack;
     private Container lastContainer;
     private int lastWindowId = -1;
@@ -16,19 +23,23 @@ public class AutoOperation extends Module {
     private int playerItemCount;
     private double pendingTicks;
     private boolean awaitingRefresh;
+    private int signTicks;
 
     public AutoOperation() {
         super("Auto Operation", category.player);
         this.registerSetting(this.operationDelay);
+        this.registerSetting(this.sign);
     }
 
     @Override
     public void onDisable() {
         this.clearOperation();
+        this.signTicks = 0;
     }
 
     @Override
     public void onUpdate() {
+        this.updateSign();
         if (this.operationStack == null) {
             return;
         }
@@ -76,6 +87,51 @@ public class AutoOperation extends Module {
         }
 
         this.clickOperationSlot(container, slot);
+    }
+
+    private void updateSign() {
+        if (!this.sign.isToggled()) {
+            this.signTicks = 0;
+            return;
+        }
+        if (++this.signTicks < 60) {
+            return;
+        }
+        this.signTicks = 0;
+        if (!Utils.nullCheck()) {
+            return;
+        }
+
+        TileEntitySign nearestSign = null;
+        double nearestDistance = 36.0;
+        for (int x = -6; x <= 6; x++) {
+            for (int y = -6; y <= 6; y++) {
+                for (int z = -6; z <= 6; z++) {
+                    TileEntity tileEntity = mc.theWorld.getTileEntity(new BlockPos(mc.thePlayer.posX + x, mc.thePlayer.posY + y, mc.thePlayer.posZ + z));
+                    if (!(tileEntity instanceof TileEntitySign)) {
+                        continue;
+                    }
+                    double distance = mc.thePlayer.getDistanceSq(tileEntity.getPos().getX() + 0.5, tileEntity.getPos().getY() + 0.5, tileEntity.getPos().getZ() + 0.5);
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearestSign = (TileEntitySign) tileEntity;
+                    }
+                }
+            }
+        }
+        if (nearestSign == null) {
+            return;
+        }
+
+        ItemStack heldStack = mc.thePlayer.getHeldItem();
+        mc.getNetHandler().addToSendQueue(new C08PacketPlayerBlockPlacement(
+                nearestSign.getPos(),
+                EnumFacing.UP.getIndex(),
+                heldStack == null ? null : heldStack.copy(),
+                0.5F,
+                1.0F,
+                0.5F
+        ));
     }
 
     public boolean startOperation(Slot clickedSlot, int clickedButton, int clickType) {
