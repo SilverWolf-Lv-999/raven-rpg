@@ -1,4 +1,4 @@
-package keystrokesmod.utility.rpg;
+package keystrokesmod.utility.rpg.money;
 
 import net.minecraft.item.Item;
 

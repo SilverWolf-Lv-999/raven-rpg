@@ -29,7 +29,7 @@ public class Speed extends Module {
     public Speed() {
         super("Speed", category.movement, 0);
         this.registerSetting(speed = new SliderSetting("Speed", 0, speedOptions));
-        this.registerSetting(multiplier = new SliderSetting("Multiplier", "x", 1.2D, 1.0D, 1.5D, 0.01D));
+        this.registerSetting(multiplier = new SliderSetting("Multiplier", "x", 1.2D, 1.0D, 10.0D, 0.01D));
         this.registerSetting(onlyForward = new ButtonSetting("Only forward", false));
         this.registerSetting(onlyStrafe = new ButtonSetting("Only strafe", false));
     }

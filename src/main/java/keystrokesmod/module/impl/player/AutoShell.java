@@ -6,7 +6,7 @@ import keystrokesmod.module.setting.impl.ButtonSetting;
 import keystrokesmod.module.setting.impl.SliderSetting;
 import keystrokesmod.utility.PacketUtils;
 import keystrokesmod.utility.Utils;
-import keystrokesmod.utility.rpg.RPGMoney;
+import keystrokesmod.utility.rpg.money.RPGMoney;
 import keystrokesmod.utility.rpg.RPGUtility;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.gui.inventory.GuiInventory;

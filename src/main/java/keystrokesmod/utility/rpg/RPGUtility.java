@@ -2,11 +2,14 @@ package keystrokesmod.utility.rpg;
 
 import keystrokesmod.script.model.ItemStack;
 import keystrokesmod.utility.Utils;
+import keystrokesmod.utility.rpg.gun.RPGGun;
+import keystrokesmod.utility.rpg.money.RPGMoney;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.init.Items;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntitySign;
+import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.IChatComponent;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
@@ -17,9 +20,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class RPGUtility {
     public static final Set<RPGMoney> RPG_MONEYS;
+    private static final Pattern RPG_GUN_BULLET_PATTERN = Pattern.compile("[<《〈‹«\"“”＂]\\s*(\\d+)\\s*[>》〉›»\"“”＂]");
     private static final Set<String> TRADING_MARKET_VILLAGER_NAMES = new HashSet<>(Arrays.asList("VIP", "超级VIP", "至尊VIP"));
     private static final Map<String, Vec3> TRADING_MARKET_VILLAGER_CACHE = new HashMap<>();
     private static World cachedTradingMarketWorld;
@@ -39,6 +45,47 @@ public final class RPGUtility {
                 hasFrom = true;
         }
         return hasMoneyTip && hasFrom;
+    }
+
+    public static boolean isRPGGun(ItemStack stack) {
+        return getRPGGun(stack) != null;
+    }
+
+    public static RPGGun getRPGGun(ItemStack stack) {
+        if (stack == null) {
+            return null;
+        }
+
+        boolean gunType = false;
+        boolean gunPower = false;
+        int bullet = -1;
+        boolean reloading = false;
+        List<String> tooltip = stack.getTooltip();
+        if (tooltip == null) {
+            return null;
+        }
+
+        for (String tooltipLine : tooltip) {
+            String line = EnumChatFormatting.getTextWithoutFormattingCodes(tooltipLine);
+            if (line == null) {
+                continue;
+            }
+
+            if (line.contains("类型") && line.contains("主武器")) {
+                gunType = true;
+            }
+            if (line.contains("威力")) {
+                gunPower = true;
+            }
+
+            Matcher matcher = RPG_GUN_BULLET_PATTERN.matcher(line);
+            if (matcher.find()) {
+                bullet = Integer.parseInt(matcher.group(1));
+                reloading = line.substring(matcher.end()).indexOf('R') >= 0;
+            }
+        }
+
+        return gunType && gunPower && bullet >= 0 ? new RPGGun(stack, bullet, reloading) : null;
     }
 
     // 判断是否是在全球市场
