@@ -58,7 +58,7 @@ public class GunAura extends Module {
         this.registerSetting(targetMode = new SliderSetting("Targets", 0, targetModes));
         this.registerSetting(mode = new SliderSetting("Mode", 0, modes));
         this.registerSetting(fov = new SliderSetting("FOV", "°", 360.0, 30.0, 360.0, 4.0));
-        this.registerSetting(range = new SliderSetting("Range", 4.5, 3.0, 16.0, 0.05));
+        this.registerSetting(range = new SliderSetting("Range", 4.5, 3.0, 21.0, 0.05));
         this.registerSetting(sortMode = new SliderSetting("Sort mode", 0, sortModes));
         this.registerSetting(switchDelay = new SliderSetting("Switch delay", "ms", 200.0, 50.0, 1000.0, 25.0));
         this.registerSetting(switchTargets = new SliderSetting("Switch targets", 3.0, 1.0, 10.0, 1.0));
@@ -101,7 +101,7 @@ public class GunAura extends Module {
     @SubscribeEvent(priority = EventPriority.LOW)
     public void onPreMotion(PreMotionEvent event) {
         fireAfterMotion = false;
-        if (!Utils.nullCheck() || mc.currentScreen != null) {
+        if (!Utils.nullCheck()) {
             target = null;
             return;
         }
@@ -138,7 +138,7 @@ public class GunAura extends Module {
         }
         fireAfterMotion = false;
         heldGun = RPGUtility.getRPGGun(ItemStack.convert(mc.thePlayer.getHeldItem()));
-        if (heldGun == null || heldGun.bullet <= 0 || heldGun.reloading || mc.currentScreen != null) {
+        if (heldGun == null || heldGun.bullet <= 0 || heldGun.reloading) {
             return;
         }
         mc.getNetHandler().addToSendQueue(new C08PacketPlayerBlockPlacement(mc.thePlayer.getHeldItem()));
