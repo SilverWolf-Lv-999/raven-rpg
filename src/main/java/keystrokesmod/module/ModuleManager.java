@@ -103,6 +103,7 @@ public class ModuleManager {
     public static AutoOperation autoOperation;
     public static Disabler disabler;
     public static AutoTracking autoTracking;
+    public static HClip hClip;
 
     public void register() {
         this.addModule(new AntiPacket());
@@ -259,6 +260,7 @@ public class ModuleManager {
         this.addModule(autoAnswer = new AutoAnswer());
         this.addModule(autoOperation = new AutoOperation());
         this.addModule(disabler = new Disabler());
+        this.addModule(hClip = new HClip());
 
         movementFix.enable();
         antiBot.enable();
