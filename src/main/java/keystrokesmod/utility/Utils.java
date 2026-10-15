@@ -3,16 +3,15 @@ package keystrokesmod.utility;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.gson.JsonObject;
+import keystrokesmod.Raven;
 import keystrokesmod.helper.MouseHelper;
 import keystrokesmod.mixin.impl.accessor.IAccessorGuiIngame;
 import keystrokesmod.mixin.impl.accessor.IAccessorItemFood;
 import keystrokesmod.mixin.impl.accessor.IAccessorMinecraft;
 import keystrokesmod.mixin.impl.accessor.IAccessorPlayerControllerMP;
-import keystrokesmod.Raven;
 import keystrokesmod.module.Module;
 import keystrokesmod.module.ModuleManager;
 import keystrokesmod.module.impl.client.Settings;
-import keystrokesmod.module.impl.combat.AutoClicker;
 import keystrokesmod.module.impl.minigames.DuelsStats;
 import keystrokesmod.module.impl.player.Freecam;
 import keystrokesmod.module.impl.world.AntiBot;
@@ -510,14 +509,14 @@ public class Utils implements IMinecraftInstance {
 
     public static void sendMessage(String txt) {
         if (nullCheck()) {
-            String m = formatColor("&7[&dR&7]&r " + txt);
+            String m = formatColor("&7[&dRaven&7]&r " + txt);
             mc.thePlayer.addChatMessage(new ChatComponentText(m));
         }
     }
 
     public static void sendMessageStr(String txt) {
         if (nullCheck()) {
-            String m = formatColor("&7[&dR&7]&r " + txt);
+            String m = formatColor("&7[&ddRaven&7]&r " + txt);
             mc.thePlayer.addChatMessage(new ChatComponentText(m));
         }
     }
@@ -529,7 +528,7 @@ public class Utils implements IMinecraftInstance {
 
     public static void sendDebugMessage(String message) {
         if (nullCheck()) {
-            mc.thePlayer.addChatMessage(new ChatComponentText("§7[§dR§7]§r " + message));
+            mc.thePlayer.addChatMessage(new ChatComponentText("§7[§ddRaven§7]§r " + message));
         }
     }
 
