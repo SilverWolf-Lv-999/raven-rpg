@@ -199,6 +199,7 @@ public class ModuleManager {
         this.addModule(new Clutch());
         this.addModule(new Derp());
         this.addModule(autoTool = new AutoTool());
+        this.addModule(new AutoMining());
         this.addModule(bedAura = new BedAura());
         this.addModule(blink = new Blink());
         this.addModule(new DelayRemover());
@@ -327,3 +328,4 @@ public class ModuleManager {
         return normalized.toString();
     }
 }
+
