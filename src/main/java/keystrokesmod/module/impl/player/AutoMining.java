@@ -154,6 +154,9 @@ public class AutoMining extends Module {
         if (targetPos == null || targetSlot == -1 || !Utils.nullCheck()) {
             return;
         }
+        if (mc.currentScreen != null) {
+            return;
+        }
         int attackKey = mc.gameSettings.keyBindAttack.getKeyCode();
         KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
         KeyBinding.setKeyBindState(attackKey, false);
@@ -164,28 +167,28 @@ public class AutoMining extends Module {
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onPreAttack(PreAttackEvent event) {
-        if (targetPos != null && targetSlot != -1) {
+        if (mc.currentScreen == null && targetPos != null && targetSlot != -1) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onMouse(MouseEvent event) {
-        if (targetPos != null && targetSlot != -1 && (event.button == 0 || event.button == 1)) {
+        if (mc.currentScreen == null && targetPos != null && targetSlot != -1 && (event.button == 0 || event.button == 1)) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onSlotScroll(PreSlotScrollEvent event) {
-        if (targetPos != null && targetSlot != -1) {
+        if (mc.currentScreen == null && targetPos != null && targetSlot != -1) {
             event.setCanceled(true);
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onSlotUpdate(SlotUpdateEvent event) {
-        if (targetPos != null && targetSlot != -1) {
+        if (mc.currentScreen == null && targetPos != null && targetSlot != -1) {
             event.setCanceled(true);
         }
     }
@@ -246,7 +249,7 @@ public class AutoMining extends Module {
         return bestSlot;
     }
 
-    private boolean shouldMineTarget() {
+    public boolean shouldMineTarget() {
         return isEnabled()
             && targetPos != null
             && targetSlot != -1

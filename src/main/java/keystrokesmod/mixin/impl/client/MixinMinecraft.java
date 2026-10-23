@@ -3,6 +3,7 @@ package keystrokesmod.mixin.impl.client;
 import keystrokesmod.event.*;
 import net.minecraft.util.MovingObjectPosition;
 import keystrokesmod.module.ModuleManager;
+import keystrokesmod.module.impl.player.AutoMining;
 import keystrokesmod.module.impl.player.BedAura;
 import keystrokesmod.module.impl.render.Freelook;
 import keystrokesmod.module.impl.player.FastMine;
@@ -17,6 +18,7 @@ import net.minecraftforge.common.MinecraftForge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -83,6 +85,16 @@ public class MixinMinecraft {
         NoInteractionLimit module = ModuleManager.noInteractionLimit;
         return player.isUsingItem() && (module == null || !module.canInteractWhileUsing(player));
     }
+    @ModifyArg(
+        method = "runTick",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;sendClickBlockToController(Z)V"),
+        index = 0
+    )
+    private boolean raven$continueAutoMining(boolean leftClick) {
+        AutoMining autoMining = (AutoMining) ModuleManager.getModule(AutoMining.class);
+        return leftClick || (autoMining != null && autoMining.shouldMineTarget());
+    }
+
     @Inject(
         method = "runTick",
         at = @At(
