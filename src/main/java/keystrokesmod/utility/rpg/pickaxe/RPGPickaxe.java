@@ -2,13 +2,17 @@ package keystrokesmod.utility.rpg.pickaxe;
 
 import keystrokesmod.script.model.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
+
 
 public class RPGPickaxe {
+    public static final List<RPGPickaxe> temp = new ArrayList<>();
+
     private boolean hasMaster;
 
     private final ItemStack stack;
 
-    private int canBreakLevel = 1;
 
     public RPGPickaxe(ItemStack stack) {
         this.stack = stack;
@@ -25,13 +29,5 @@ public class RPGPickaxe {
 
     public ItemStack getStack() {
         return stack;
-    }
-
-    public void setCanBreakLevel(int canBreakLevel) {
-        this.canBreakLevel = canBreakLevel;
-    }
-
-    public int getCanBreakLevel() {
-        return canBreakLevel;
     }
 }

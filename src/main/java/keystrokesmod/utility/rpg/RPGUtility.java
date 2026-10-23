@@ -5,10 +5,8 @@ import keystrokesmod.utility.Utils;
 import keystrokesmod.utility.rpg.gun.RPGGun;
 import keystrokesmod.utility.rpg.money.RPGMoney;
 import keystrokesmod.utility.rpg.pickaxe.RPGPickaxe;
-import net.minecraft.block.Block;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.passive.EntityVillager;
-import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.tileentity.TileEntitySign;
@@ -17,12 +15,7 @@ import net.minecraft.util.IChatComponent;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.World;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -65,7 +58,6 @@ public final class RPGUtility {
         boolean hasMaster = false;
         final boolean isPickaxe = stack.displayName.contains("镐");
         boolean hasSpeed = false;
-        int breakLevel = 1;
         for (String s : tooltip) {
             if (s.contains("绑定至"))
                 hasMaster = true;
@@ -76,19 +68,8 @@ public final class RPGUtility {
         if (hasMaster && isPickaxe && hasSpeed) {
             pickaxe = new RPGPickaxe(stack);
             pickaxe.setHasMaster(true);
-
         }
         return pickaxe;
-    }
-
-    public static Block rpgPickaxeCanBreak(RPGPickaxe pickaxe) {
-        if (pickaxe.getCanBreakLevel() == -1) {
-            return null;
-        }
-        if (pickaxe.getCanBreakLevel() == 2) {
-            return Blocks.iron_ore;
-        }
-        return Blocks.coal_ore;
     }
 
     public static boolean isRPGGun(ItemStack stack) {
