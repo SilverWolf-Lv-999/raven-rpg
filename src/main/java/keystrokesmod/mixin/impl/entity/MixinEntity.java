@@ -17,6 +17,7 @@ import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
@@ -102,11 +103,40 @@ public abstract class MixinEntity {
         return new Vec3(f1 * f2, f3, f * f2);
     }
 
+    @Unique
+    private PlayerMoveEvent raven$playerMoveEvent;
+
     @Inject(method = "moveEntity", at = @At("HEAD"))
     private void injectPlayerMoveEvent(double x, double y, double z, CallbackInfo ci) {
-        if (((Object) this) instanceof EntityPlayerSP) {
-            MinecraftForge.EVENT_BUS.post(new PlayerMoveEvent(x, y, z));
+        if ((Object) this == Minecraft.getMinecraft().thePlayer) {
+            this.raven$playerMoveEvent = new PlayerMoveEvent(x, y, z);
+            MinecraftForge.EVENT_BUS.post(this.raven$playerMoveEvent);
+        } else {
+            this.raven$playerMoveEvent = null;
         }
+    }
+
+    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private double raven$modifyPlayerMoveX(double x) {
+        return (Object) this == Minecraft.getMinecraft().thePlayer && this.raven$playerMoveEvent != null
+                ? this.raven$playerMoveEvent.x : x;
+    }
+
+    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), argsOnly = true, ordinal = 1)
+    private double raven$modifyPlayerMoveY(double y) {
+        return (Object) this == Minecraft.getMinecraft().thePlayer && this.raven$playerMoveEvent != null
+                ? this.raven$playerMoveEvent.y : y;
+    }
+
+    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), argsOnly = true, ordinal = 2)
+    private double raven$modifyPlayerMoveZ(double z) {
+        if ((Object) this == Minecraft.getMinecraft().thePlayer && this.raven$playerMoveEvent != null) {
+            double modifiedZ = this.raven$playerMoveEvent.z;
+            this.raven$playerMoveEvent = null;
+            return modifiedZ;
+        }
+        this.raven$playerMoveEvent = null;
+        return z;
     }
 
     @Inject(method = "setVelocity", at = @At("HEAD"), cancellable = true)
