@@ -1,36 +1,19 @@
 package keystrokesmod.module.impl.player;
 
-import keystrokesmod.event.ClientRotationEvent;
-import keystrokesmod.event.PostMouseSelectionEvent;
-import keystrokesmod.event.PreAttackEvent;
-import keystrokesmod.event.PrePlayerInteractEvent;
-import keystrokesmod.event.PreSlotScrollEvent;
-import keystrokesmod.event.SlotUpdateEvent;
-import keystrokesmod.mixin.impl.accessor.IAccessorEntityRenderer;
-import keystrokesmod.mixin.impl.accessor.IAccessorPlayerControllerMP;
 import keystrokesmod.module.Module;
-import keystrokesmod.utility.BlockUtils;
-import keystrokesmod.utility.RotationUtils;
 import keystrokesmod.utility.Utils;
 import net.minecraft.block.Block;
-import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemPickaxe;
 import net.minecraft.item.ItemStack;
+import net.minecraft.network.play.client.C07PacketPlayerDigging;
+import net.minecraft.network.play.client.C09PacketHeldItemChange;
 import net.minecraft.util.BlockPos;
 import net.minecraft.util.EnumFacing;
-import net.minecraft.util.MovingObjectPosition;
 import net.minecraft.util.Vec3;
-import net.minecraftforge.client.event.MouseEvent;
-import net.minecraftforge.fml.common.eventhandler.EventPriority;
-import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import org.lwjgl.input.Mouse;
 
 public class AutoMining extends Module {
     private BlockPos targetPos;
-    private Vec3 targetHitVec;
-    private EnumFacing targetSide;
     private int targetSlot = -1;
     private int previousSlot = -1;
     private long nextScanTime;
@@ -42,8 +25,6 @@ public class AutoMining extends Module {
     @Override
     public void onEnable() {
         targetPos = null;
-        targetHitVec = null;
-        targetSide = null;
         targetSlot = -1;
         previousSlot = -1;
         nextScanTime = 0L;
@@ -53,22 +34,14 @@ public class AutoMining extends Module {
     public void onDisable() {
         restoreSlot();
         targetPos = null;
-        targetHitVec = null;
-        targetSide = null;
         targetSlot = -1;
         nextScanTime = 0L;
-        if (Utils.nullCheck()) {
-            KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), Mouse.isButtonDown(0));
-            KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), Mouse.isButtonDown(1));
-        }
     }
 
     @Override
     public void onUpdate() {
         if (!Utils.nullCheck()) {
             targetPos = null;
-            targetHitVec = null;
-            targetSide = null;
             targetSlot = -1;
             previousSlot = -1;
             return;
@@ -80,12 +53,8 @@ public class AutoMining extends Module {
         long now = System.currentTimeMillis();
         if (targetPos != null && mc.theWorld.getBlockState(targetPos).getBlock() == Blocks.bedrock) {
             targetPos = null;
-            targetHitVec = null;
-            targetSide = null;
             targetSlot = -1;
-            restoreSlot();
-            nextScanTime = now + 1000L;
-            KeyBinding.setKeyBindState(mc.gameSettings.keyBindAttack.getKeyCode(), Mouse.isButtonDown(0));
+            nextScanTime = 0L;
         }
 
         if (targetPos == null) {
@@ -101,10 +70,6 @@ public class AutoMining extends Module {
         }
 
         Block block = mc.theWorld.getBlockState(targetPos).getBlock();
-        if (block == Blocks.air || block == Blocks.bedrock) {
-            return;
-        }
-
         if (targetSlot == -1) {
             targetSlot = findPickaxeSlot(block);
         }
@@ -112,85 +77,19 @@ public class AutoMining extends Module {
             return;
         }
 
+        if (previousSlot == -1) {
+            previousSlot = mc.thePlayer.inventory.currentItem;
+        }
         if (mc.thePlayer.inventory.currentItem != targetSlot) {
-            if (previousSlot == -1) {
-                previousSlot = mc.thePlayer.inventory.currentItem;
-            }
             mc.thePlayer.inventory.currentItem = targetSlot;
-            ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
+            mc.thePlayer.sendQueue.addToSendQueue(new C09PacketHeldItemChange(targetSlot));
         }
 
-        Vec3 eye = mc.thePlayer.getPositionEyes(1.0F);
-        targetHitVec = RotationUtils.closestPointOnAabb(BlockUtils.getBlockSelectionBox(targetPos), eye);
-        targetSide = BlockUtils.facingFromBlockCenterToPoint(targetPos, targetHitVec);
-        ((IAccessorPlayerControllerMP) mc.playerController).setBlockHitDelay(0);
-    }
-
-    @SubscribeEvent
-    public void onClientRotation(ClientRotationEvent event) {
-        if (!shouldMineTarget()) {
-            return;
-        }
-        float baseYaw = event.yaw != null ? event.yaw : RotationUtils.serverRotations[0];
-        float basePitch = event.pitch != null ? event.pitch : RotationUtils.serverRotations[1];
-        float[] rotations = RotationUtils.getRotationsToPoint(
-            targetHitVec.xCoord,
-            targetHitVec.yCoord,
-            targetHitVec.zCoord,
-            baseYaw,
-            basePitch
-        );
-        event.setYaw(rotations[0]);
-        event.setPitch(rotations[1]);
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public void onPostMouseSelection(PostMouseSelectionEvent event) {
-        modifyMouseOver();
-    }
-
-    @SubscribeEvent(priority = EventPriority.LOWEST)
-    public void onPrePlayerInteract(PrePlayerInteractEvent event) {
-        if (targetPos == null || targetSlot == -1 || !Utils.nullCheck()) {
-            return;
-        }
-        if (mc.currentScreen != null) {
-            return;
-        }
-        int attackKey = mc.gameSettings.keyBindAttack.getKeyCode();
-        KeyBinding.setKeyBindState(mc.gameSettings.keyBindUseItem.getKeyCode(), false);
-        KeyBinding.setKeyBindState(attackKey, false);
-        if (shouldMineTarget()) {
-            KeyBinding.setKeyBindState(attackKey, true);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public void onPreAttack(PreAttackEvent event) {
-        if (mc.currentScreen == null && targetPos != null && targetSlot != -1) {
-            event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public void onMouse(MouseEvent event) {
-        if (mc.currentScreen == null && targetPos != null && targetSlot != -1 && (event.button == 0 || event.button == 1)) {
-            event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public void onSlotScroll(PreSlotScrollEvent event) {
-        if (mc.currentScreen == null && targetPos != null && targetSlot != -1) {
-            event.setCanceled(true);
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGH)
-    public void onSlotUpdate(SlotUpdateEvent event) {
-        if (mc.currentScreen == null && targetPos != null && targetSlot != -1) {
-            event.setCanceled(true);
-        }
+        mc.thePlayer.sendQueue.addToSendQueue(new C07PacketPlayerDigging(
+            C07PacketPlayerDigging.Action.START_DESTROY_BLOCK,
+            targetPos,
+            EnumFacing.UP
+        ));
     }
 
     private BlockPos findTarget() {
@@ -249,33 +148,10 @@ public class AutoMining extends Module {
         return bestSlot;
     }
 
-    public boolean shouldMineTarget() {
-        return isEnabled()
-            && targetPos != null
-            && targetSlot != -1
-            && targetHitVec != null
-            && targetSide != null
-            && Utils.nullCheck()
-            && mc.theWorld.getBlockState(targetPos).getBlock() != Blocks.air
-            && mc.theWorld.getBlockState(targetPos).getBlock() != Blocks.bedrock;
-    }
-
-    private void modifyMouseOver() {
-        if (!shouldMineTarget() || mc.getRenderViewEntity() == null) {
-            return;
-        }
-        mc.objectMouseOver = new MovingObjectPosition(targetHitVec, targetSide, targetPos);
-        mc.pointedEntity = null;
-        EntityRenderer renderer = mc.entityRenderer;
-        if (renderer instanceof IAccessorEntityRenderer) {
-            ((IAccessorEntityRenderer) renderer).setPointedEntity(null);
-        }
-    }
-
     private void restoreSlot() {
         if (previousSlot != -1 && Utils.nullCheck() && mc.thePlayer.inventory.currentItem != previousSlot) {
             mc.thePlayer.inventory.currentItem = previousSlot;
-            ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
+            mc.thePlayer.sendQueue.addToSendQueue(new C09PacketHeldItemChange(previousSlot));
         }
         previousSlot = -1;
     }

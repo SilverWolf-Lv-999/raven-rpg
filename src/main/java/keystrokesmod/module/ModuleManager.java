@@ -170,6 +170,7 @@ public class ModuleManager {
         this.addModule(noSlowBreak = new NoSlowBreak());
         this.addModule(new NullMove());
         this.addModule(new Speed());
+        this.addModule(new Step());
         this.addModule(sprint = new Sprint());
         this.addModule(new Stasis());
         this.addModule(new StopMotion());
