@@ -116,19 +116,19 @@ public abstract class MixinEntity {
         }
     }
 
-    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), index = 1)
     private double raven$modifyPlayerMoveX(double x) {
         return (Object) this == Minecraft.getMinecraft().thePlayer && this.raven$playerMoveEvent != null
                 ? this.raven$playerMoveEvent.x : x;
     }
 
-    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), argsOnly = true, ordinal = 1)
+    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), index = 3)
     private double raven$modifyPlayerMoveY(double y) {
         return (Object) this == Minecraft.getMinecraft().thePlayer && this.raven$playerMoveEvent != null
                 ? this.raven$playerMoveEvent.y : y;
     }
 
-    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), argsOnly = true, ordinal = 2)
+    @ModifyVariable(method = "moveEntity", at = @At("HEAD"), index = 5)
     private double raven$modifyPlayerMoveZ(double z) {
         if ((Object) this == Minecraft.getMinecraft().thePlayer && this.raven$playerMoveEvent != null) {
             double modifiedZ = this.raven$playerMoveEvent.z;
