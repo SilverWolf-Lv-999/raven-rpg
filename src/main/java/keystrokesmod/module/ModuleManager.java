@@ -89,6 +89,7 @@ public class ModuleManager {
     public static AutoTool autoTool;
     public static AutoSwap autoSwap;
     public static AutoShell autoShell;
+    public static AutocCllection autocCllection;
     public static VillagerTrade villagerTrade;
     public static Sprint sprint;
     public static Weather weather;
@@ -191,6 +192,7 @@ public class ModuleManager {
         this.addModule(new AutoJump());
         this.addModule(autoSwap = new AutoSwap());
         this.addModule(autoShell = new AutoShell());
+        this.addModule(autocCllection = new AutocCllection());
         this.addModule(autoTracking = new AutoTracking());
         this.addModule(villagerTrade = new VillagerTrade());
         this.addModule(new AutoCD());
